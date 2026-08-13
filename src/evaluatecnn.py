@@ -277,9 +277,6 @@ pred_names = [
 # ============================================================
 
 results = pd.DataFrame({
-    "Document":
-        test_df["Document"].values,
-
     "true_label":
         true_names,
 

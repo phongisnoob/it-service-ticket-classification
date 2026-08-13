@@ -245,3 +245,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# Prediction files may contain ticket text
+reports/metrics/*_predictions.csv
+reports/metrics/high_confidence_errors.csv
+reports/private/

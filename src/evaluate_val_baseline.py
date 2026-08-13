@@ -60,9 +60,6 @@ confidence = np.max(
 
 # Save validation predictions
 results = pd.DataFrame({
-    "Document":
-        val_df["Document"].values,
-
     "true_label":
         val_df["Topic_group"].values,
 

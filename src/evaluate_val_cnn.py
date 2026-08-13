@@ -207,9 +207,6 @@ predicted_labels = [
 # ============================================================
 
 results = pd.DataFrame({
-    "Document":
-        val_df["Document"].values,
-
     "true_label":
         true_labels,
 
