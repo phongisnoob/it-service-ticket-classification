@@ -207,6 +207,9 @@ predicted_labels = [
 # ============================================================
 
 results = pd.DataFrame({
+    "ticket_id": 
+        val_df.index.to_numpy(),
+
     "true_label":
         true_labels,
 
