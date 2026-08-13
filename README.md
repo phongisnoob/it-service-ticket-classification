@@ -365,7 +365,8 @@ For larger changes, open an issue first so the proposed behavior can be discusse
 ## Maintainer
 
 Maintained by the repository owner. If the project is published under an organization or transferred to another maintainer, update this section with the appropriate contact or team information.
-=======
+
 # it-service-ticket-classification
+
 End-to-end NLP system for IT ticket classification with model benchmarking, confidence-based human escalation, and FastAPI serving.
 
