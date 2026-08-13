@@ -1,13 +1,13 @@
+import hashlib
 import json
 from pathlib import Path
-import hashlib
+
 import joblib
 import numpy as np
 import torch
 
 from src.cnn_data import encode_text
 from src.textcnn import TextCNN
-
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
@@ -133,7 +133,7 @@ def format_prediction(
             ),
         "confidence":
             confidence,
-        "threshold": 
+        "threshold":
             float(threshold),
         "needs_manual_review":
             confidence < threshold,
@@ -143,7 +143,7 @@ def format_prediction(
 
 
 # Logistic Regression
-    
+
 
 class BaselinePredictor:
 
@@ -159,15 +159,20 @@ class BaselinePredictor:
             model_path,
         )
 
+        self.model_sha256 = calculate_sha256(
+            model_path
+        )
+
         self.model = joblib.load(
             model_path
         )
 
-        self.labels = (
-            self.model
-            .named_steps["classifier"]
-            .classes_
-        )
+        if hasattr(self.model, "classes_"):
+            self.labels = self.model.classes_
+        elif hasattr(self.model, "named_steps"):
+            self.labels = self.model.named_steps["classifier"].classes_
+        else:
+            raise AttributeError("Loaded model has no classes_ attribute")
 
 
     def predict(
@@ -192,7 +197,7 @@ class BaselinePredictor:
 class CNNPredictor:
 
     def __init__(self):
-        
+
         cnn_dir = (
             ARTIFACT_DIR
             / "cnn"
@@ -287,12 +292,16 @@ class CNNPredictor:
             weights_path,
         )
 
+        self.model_sha256 = calculate_sha256(
+            weights_path
+        )
+
 
     def predict(
         self,
         text,
     ):
-        
+
         token_ids = encode_text(
             text,
             self.vocab,

@@ -1,8 +1,8 @@
 import pytest
-
 from fastapi.testclient import TestClient
 
 from app import main as api
+
 
 @pytest.fixture
 def client(monkeypatch):
@@ -17,6 +17,9 @@ def client(monkeypatch):
         yield client
 
 class FakePredictor:
+
+    threshold = 0.40
+    model_sha256 = "fake_sha256_for_testing"
 
     def predict(self, text: str):
         return {
@@ -59,6 +62,10 @@ def test_health(client):
     assert data["status"] == "ok"
 
     assert "model_backend" in data
+
+    assert "model_sha256" in data
+
+    assert "threshold" in data
 
 
 def test_predict(client):

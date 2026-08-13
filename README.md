@@ -22,7 +22,7 @@ The production model is intentionally the simpler one: Logistic Regression sligh
 | Model | Accuracy | Macro F1 | Weighted F1 |
 |---|---:|---:|---:|
 | **TF-IDF + Logistic Regression** | **85.20%** | **85.19%** | **85.30%** |
-| TextCNN | 84.48% | 84.62% | 84.54% |
+| TextCNN | 84.88% | 85.01% | 84.94% |
 
 ![Model performance comparison](reports/figures/model_comparison.png)
 
@@ -103,28 +103,38 @@ The experimental TextCNN uses learned embeddings, parallel 1D convolutions with 
 │   └── raw/                        # Dataset location (CSV ignored by Git)
 ├── notebook/                       # Exploratory notebooks
 ├── reports/
+│   ├── data/                       # Persisted split manifests
 │   ├── figures/                    # Generated plots
 │   └── metrics/                    # Metrics, thresholds, predictions
 ├── src/
-│   ├── data.py                     # Loading and stratified splitting
-│   ├── evaluate.py                 # Shared classification metrics
+│   ├── data.py                     # Loading, deduplication, stratified splitting
+│   ├── evaluate.py                 # Shared classification & calibration metrics
+│   ├── routing_utils.py            # Bootstrap CI for routing evaluation
 │   ├── train_baseline.py           # TF-IDF + Logistic Regression training
 │   ├── evaluate_val_baseline.py    # Baseline validation predictions
 │   ├── analyze_threshold_baseline.py
 │   ├── evaluate_routing_baseline.py
+│   ├── evaluate_baseline.py        # Baseline test evaluation
 │   ├── cnn_data.py                 # CNN tokenization/vocabulary/dataset
 │   ├── textcnn.py                  # TextCNN architecture
-│   ├── traincnn.py                 # TextCNN training + early stopping
-│   ├── evaluatecnn.py              # TextCNN test evaluation
+│   ├── train_cnn.py                # TextCNN training + early stopping
+│   ├── evaluate_cnn.py             # TextCNN test evaluation
 │   ├── evaluate_val_cnn.py         # TextCNN validation predictions
-│   ├── modelscompare.py            # Model comparison table
+│   ├── analyze_threshold_cnn.py    # CNN threshold analysis
+│   ├── compare_models.py           # Model comparison table
+│   ├── select_model.py             # Automated production model selection
 │   ├── error_summary.py            # CNN error analysis
 │   ├── plot_results.py             # README/report figures
 │   └── inference.py                # Baseline/CNN prediction backends
 ├── tests/
-│   └── test_api.py                 # FastAPI tests
+│   ├── test_api.py                 # FastAPI unit tests
+│   └── test_integration.py         # ML pipeline integration tests
+├── .github/
+│   └── workflows/ci.yml            # GitHub Actions CI
 ├── .gitignore
-└── requirements.txt
+├── pyproject.toml                  # Ruff / pytest configuration
+├── requirements.txt                # CPU dependencies
+└── requirements-cuda.txt           # GPU/CUDA override
 ```
 
 Model binaries (`*.joblib`, `*.pt`) and the raw dataset are ignored by Git, so a fresh clone should train the desired backend before starting the API.
@@ -159,7 +169,13 @@ source .venv/bin/activate
 The codebase requires NumPy, pandas, scikit-learn, joblib, Matplotlib, PyTorch, FastAPI, Uvicorn, and pytest.
 
 ```bash
-python -m pip install numpy pandas scikit-learn joblib matplotlib torch "fastapi[standard]" pytest
+pip install -r requirements.txt
+```
+
+For GPU/CUDA environments, install with the CUDA override instead:
+
+```bash
+pip install -r requirements-cuda.txt --extra-index-url https://download.pytorch.org/whl/cu126
 ```
 
 ### 4. Add the dataset

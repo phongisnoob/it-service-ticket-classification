@@ -1,7 +1,6 @@
 import os
-from contextlib import asynccontextmanager
-
 import secrets
+from contextlib import asynccontextmanager
 
 from fastapi import (
     Depends,
@@ -95,17 +94,18 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "model_backend": MODEL_BACKEND}
+    predictor = app.state.predictor
+    return {
+        "status": "ok",
+        "model_backend": MODEL_BACKEND,
+        "model_sha256": getattr(predictor, "model_sha256", None),
+        "threshold": getattr(predictor, "threshold", None),
+    }
 
 
 # ============================================================
 # Prediction
 # ============================================================
-
-@app.post("/predict", response_model=PredictionResponse)
-def predict_ticket(request: TicketRequest):
-    result = app.state.predictor.predict(request.text)
-    return result
 
 API_KEY = os.getenv(
     "API_KEY"

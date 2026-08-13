@@ -1,0 +1,8 @@
+{
+    "dataset_sha256": "044fdace33fa564e1e60453f2941dafc95539c99878b0d32746950394b9dd4d4",
+    "random_seed": 42,
+    "train_rows": 33485,
+    "validation_rows": 7176,
+    "test_rows": 7176,
+    "total_rows": 47837
+}

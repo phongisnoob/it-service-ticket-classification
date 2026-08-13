@@ -1,0 +1,20 @@
+[project]
+name = "it-ticket-classification"
+version = "1.0.0"
+description = "IT service ticket classification with confidence-based routing"
+requires-python = ">=3.12"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["notebook"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src", "app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

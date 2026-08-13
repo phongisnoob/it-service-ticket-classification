@@ -2,7 +2,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
 METRICS_DIR = (
@@ -12,83 +11,88 @@ METRICS_DIR = (
 )
 
 
-results = pd.read_csv(
-    METRICS_DIR
-    / "cnn_test_predictions.csv"
-)
+def main():
+    results = pd.read_csv(
+        METRICS_DIR
+        / "cnn_test_predictions.csv"
+    )
 
 
-errors = results[
-    results["correct"] == False
-].copy()
+    errors = results[
+        not results["correct"]
+    ].copy()
 
 
-# ============================================================
-# Most common confusion pairs
-# ============================================================
+    # ============================================================
+    # Most common confusion pairs
+    # ============================================================
 
-confusions = (
-    errors
-    .groupby(
-        [
-            "true_label",
-            "predicted_label",
+    confusions = (
+        errors
+        .groupby(
+            [
+                "true_label",
+                "predicted_label",
+            ]
+        )
+        .size()
+        .reset_index(
+            name="count"
+        )
+        .sort_values(
+            "count",
+            ascending=False,
+        )
+    )
+
+
+    confusions.to_csv(
+        METRICS_DIR
+        / "error_pairs.csv",
+        index=False,
+    )
+
+
+    print("\nMost Common Errors")
+    print("=" * 70)
+
+    print(
+        confusions
+        .head(15)
+        .to_string(
+            index=False
+        )
+    )
+
+
+    # ============================================================
+    # High-confidence errors
+    # ============================================================
+
+    high_confidence_errors = (
+        errors[
+            errors["confidence"]
+            >= 0.80
         ]
+        .sort_values(
+            "confidence",
+            ascending=False,
+        )
     )
-    .size()
-    .reset_index(
-        name="count"
+
+
+    high_confidence_errors.to_csv(
+        METRICS_DIR
+        / "high_confidence_errors.csv",
+        index=False,
     )
-    .sort_values(
-        "count",
-        ascending=False,
+
+
+    print(
+        "\nHigh-confidence errors:",
+        len(high_confidence_errors),
     )
-)
 
 
-confusions.to_csv(
-    METRICS_DIR
-    / "error_pairs.csv",
-    index=False,
-)
-
-
-print("\nMost Common Errors")
-print("=" * 70)
-
-print(
-    confusions
-    .head(15)
-    .to_string(
-        index=False
-    )
-)
-
-
-# ============================================================
-# High-confidence errors
-# ============================================================
-
-high_confidence_errors = (
-    errors[
-        errors["confidence"]
-        >= 0.80
-    ]
-    .sort_values(
-        "confidence",
-        ascending=False,
-    )
-)
-
-
-high_confidence_errors.to_csv(
-    METRICS_DIR
-    / "high_confidence_errors.csv",
-    index=False,
-)
-
-
-print(
-    "\nHigh-confidence errors:",
-    len(high_confidence_errors),
-)
+if __name__ == "__main__":
+    main()

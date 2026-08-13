@@ -1,8 +1,9 @@
 from pathlib import Path
-from src.data import load_data
-import pandas as pd
-import matplotlib.pyplot as plt
 
+import matplotlib.pyplot as plt
+import pandas as pd
+
+from src.data import load_data
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
@@ -28,163 +29,168 @@ FIGURE_DIR.mkdir(
 # Model comparison
 # ============================================================
 
-comparison = pd.read_csv(
-    METRICS_DIR
-    / "model_comparison.csv"
-)
+def main():
+    comparison = pd.read_csv(
+        METRICS_DIR
+        / "model_comparison.csv"
+    )
 
 
-metrics = [
-    "accuracy",
-    "macro_f1",
-    "weighted_f1",
-]
-
-
-plot_data = (
-    comparison[
-        ["model"] + metrics
+    metrics = [
+        "accuracy",
+        "macro_f1",
+        "weighted_f1",
     ]
-    .set_index("model")
-)
 
 
-ax = plot_data.plot(
-    kind="bar",
-    figsize=(10, 6),
-)
-
-ax.set_title(
-    "Model Performance Comparison"
-)
-
-ax.set_ylabel(
-    "Score"
-)
-
-ax.set_ylim(
-    0,
-    1,
-)
-
-plt.xticks(
-    rotation=0
-)
-
-plt.tight_layout()
-
-plt.savefig(
-    FIGURE_DIR
-    / "model_comparison.png",
-    dpi=200,
-)
-
-plt.close()
+    plot_data = (
+        comparison[
+            ["model"] + metrics
+        ]
+        .set_index("model")
+    )
 
 
-# ============================================================
-# Threshold trade-off
-# ============================================================
+    ax = plot_data.plot(
+        kind="bar",
+        figsize=(10, 6),
+    )
 
-threshold = pd.read_csv(
-    METRICS_DIR
-    / "baseline_threshold_analysis.csv"
-)
+    ax.set_title(
+        "Model Performance Comparison"
+    )
+
+    ax.set_ylabel(
+        "Score"
+    )
+
+    ax.set_ylim(
+        0,
+        1,
+    )
+
+    plt.xticks(
+        rotation=0
+    )
+
+    plt.tight_layout()
+
+    plt.savefig(
+        FIGURE_DIR
+        / "model_comparison.png",
+        dpi=200,
+    )
+
+    plt.close()
 
 
-plt.figure(
-    figsize=(9, 6)
-)
+    # ============================================================
+    # Threshold trade-off
+    # ============================================================
 
-plt.plot(
-    threshold["threshold"],
-    threshold["coverage"],
-    marker="o",
-    label="Coverage",
-)
+    threshold = pd.read_csv(
+        METRICS_DIR
+        / "baseline_threshold_analysis.csv"
+    )
 
-plt.plot(
-    threshold["threshold"],
-    threshold[
-        "auto_routed_accuracy"
-    ],
-    marker="o",
-    label="Auto-routed accuracy",
-)
 
-plt.xlabel(
-    "Confidence Threshold"
-)
+    plt.figure(
+        figsize=(9, 6)
+    )
 
-plt.ylabel(
-    "Score"
-)
+    plt.plot(
+        threshold["threshold"],
+        threshold["coverage"],
+        marker="o",
+        label="Coverage",
+    )
 
-plt.title(
-    "Routing Accuracy vs Coverage"
-)
+    plt.plot(
+        threshold["threshold"],
+        threshold[
+            "auto_routed_accuracy"
+        ],
+        marker="o",
+        label="Auto-routed accuracy",
+    )
 
-plt.ylim(
-    0,
-    1,
-)
+    plt.xlabel(
+        "Confidence Threshold"
+    )
 
-plt.legend()
+    plt.ylabel(
+        "Score"
+    )
 
-plt.tight_layout()
+    plt.title(
+        "Routing Accuracy vs Coverage"
+    )
 
-plt.savefig(
-    FIGURE_DIR
-    / "baseline_threshold_tradeoff.png",
-    dpi=200,
-)
+    plt.ylim(
+        0,
+        1,
+    )
 
-plt.close()
+    plt.legend()
 
-df = load_data()
+    plt.tight_layout()
 
-class_counts = (
-    df["Topic_group"]
-    .value_counts()
-    .sort_values(ascending=False)
-)
+    plt.savefig(
+        FIGURE_DIR
+        / "baseline_threshold_tradeoff.png",
+        dpi=200,
+    )
 
-plt.figure(
-    figsize=(10, 6)
-)
+    plt.close()
 
-class_counts.plot(
-    kind="bar"
-)
+    df = load_data()
 
-plt.title(
-    "Distribution of IT Service Ticket Categories"
-)
+    class_counts = (
+        df["Topic_group"]
+        .value_counts()
+        .sort_values(ascending=False)
+    )
 
-plt.xlabel(
-    "Ticket Category"
-)
+    plt.figure(
+        figsize=(10, 6)
+    )
 
-plt.ylabel(
-    "Number of Tickets"
-)
+    class_counts.plot(
+        kind="bar"
+    )
 
-plt.xticks(
-    rotation=45,
-    ha="right",
-)
+    plt.title(
+        "Distribution of IT Service Ticket Categories"
+    )
 
-plt.tight_layout()
+    plt.xlabel(
+        "Ticket Category"
+    )
 
-plt.savefig(
-    FIGURE_DIR
-    / "class_distribution.png",
-    dpi=200,
-)
+    plt.ylabel(
+        "Number of Tickets"
+    )
 
-plt.close()
+    plt.xticks(
+        rotation=45,
+        ha="right",
+    )
 
-print(
-    "Saved figures to:",
-    FIGURE_DIR,
-)
+    plt.tight_layout()
+
+    plt.savefig(
+        FIGURE_DIR
+        / "class_distribution.png",
+        dpi=200,
+    )
+
+    plt.close()
+
+    print(
+        "Saved figures to:",
+        FIGURE_DIR,
+    )
+
+
+if __name__ == "__main__":
+    main()
