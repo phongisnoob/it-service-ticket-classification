@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
-
+import platform
+import sklearn
 import joblib
 
 from sklearn.pipeline import Pipeline
@@ -105,6 +106,22 @@ def main():
         model,
         model_path,
     )
+
+    metadata = {
+    "python_version": platform.python_version(),
+    "scikit_learn_version": sklearn.__version__,
+    }
+
+    with open(
+        ARTIFACT_DIR / "baseline_metadata.json",
+        "w",
+        encoding="utf-8",
+    ) as f:
+        json.dump(
+            metadata,
+            f,
+            indent=4,
+        )
 
     print(
         f"\nModel saved to {model_path}"

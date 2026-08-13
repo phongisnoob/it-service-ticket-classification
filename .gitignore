@@ -249,3 +249,7 @@ __marimo__/
 reports/metrics/*_predictions.csv
 reports/metrics/high_confidence_errors.csv
 reports/private/
+
+# Generated prediction-level reports
+reports/metrics/*_predictions.csv
+reports/metrics/high_confidence_errors.csv

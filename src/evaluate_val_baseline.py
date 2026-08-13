@@ -60,6 +60,9 @@ confidence = np.max(
 
 # Save validation predictions
 results = pd.DataFrame({
+    "ticket_id": 
+        val_df.index.to_numpy(),
+
     "true_label":
         val_df["Topic_group"].values,
 

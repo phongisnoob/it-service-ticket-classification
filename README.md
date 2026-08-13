@@ -260,13 +260,13 @@ The API validates ticket length, returns the three highest-scoring categories, a
 Train the neural model:
 
 ```bash
-python -m src.traincnn
+python -m src.train_cnn
 ```
 
 Evaluate it on the test split:
 
 ```bash
-python -m src.evaluatecnn
+python -m src.evaluate_cnn
 ```
 
 Generate validation predictions:
@@ -278,7 +278,7 @@ python -m src.evaluate_val_cnn
 After both model metrics are available, compare them with:
 
 ```bash
-python -m src.modelscompare
+python -m src.compare_models
 ```
 
 The CNN can also be served by setting `MODEL_BACKEND=cnn` before starting Uvicorn.

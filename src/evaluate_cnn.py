@@ -277,6 +277,9 @@ pred_names = [
 # ============================================================
 
 results = pd.DataFrame({
+    "ticket_id": 
+        test_df.index.to_numpy(),
+        
     "true_label":
         true_names,
 

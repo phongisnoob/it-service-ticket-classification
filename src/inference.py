@@ -16,12 +16,6 @@ ARTIFACT_DIR = (
     / "artifacts"
 )
 
-THRESHOLD_PATH = (
-    ROOT_DIR
-    / "reports"
-    / "metrics"
-    / "selected_threshold.json"
-)
 
 BASELINE_THRESHOLD_PATH = (
     ROOT_DIR
