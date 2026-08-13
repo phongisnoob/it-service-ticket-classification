@@ -1,3 +1,6 @@
+import typing
+from typing import Any
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -5,7 +8,7 @@ from app import main as api
 
 
 @pytest.fixture
-def client(monkeypatch):
+def client(monkeypatch: Any) -> typing.Any:
 
     monkeypatch.setattr(
         api,
@@ -21,7 +24,7 @@ class FakePredictor:
     threshold = 0.40
     model_sha256 = "fake_sha256_for_testing"
 
-    def predict(self, text: str):
+    def predict(self, text: str) -> Any:
         return {
             "category": "Access",
             "confidence": 0.95,
@@ -44,14 +47,14 @@ class FakePredictor:
         }
 
 
-def test_root(client):
+def test_root(client: Any) -> None:
 
     response = client.get("/")
 
     assert response.status_code == 200
 
 
-def test_health(client):
+def test_health(client: Any) -> None:
 
     response = client.get("/health")
 
@@ -68,7 +71,7 @@ def test_health(client):
     assert "threshold" in data
 
 
-def test_predict(client):
+def test_predict(client: Any) -> None:
 
     response = client.post(
         "/predict",
@@ -101,7 +104,7 @@ def test_predict(client):
     assert len(data["top_3"]) <= 3
 
 
-def test_routing_logic(client):
+def test_routing_logic(client: Any) -> None:
 
     response = client.post(
         "/predict",
@@ -115,7 +118,7 @@ def test_routing_logic(client):
     assert data["needs_manual_review"] == expected_review
 
 
-def test_top3_sorted(client):
+def test_top3_sorted(client: Any) -> None:
 
     response = client.post(
         "/predict",
@@ -132,7 +135,7 @@ def test_top3_sorted(client):
     )
 
 
-def test_empty_ticket(client):
+def test_empty_ticket(client: Any) -> None:
 
     response = client.post(
         "/predict",

@@ -9,7 +9,7 @@ from src.paths import METRICS_DIR, ROOT_DIR
 MODEL_PATH = ROOT_DIR / "artifacts" / "baseline.joblib"
 
 
-def main():
+def main() -> None:
     if not MODEL_PATH.exists():
         raise FileNotFoundError(f"Model not found: {MODEL_PATH}")
 

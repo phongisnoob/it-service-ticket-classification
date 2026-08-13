@@ -5,7 +5,7 @@ import pandas as pd
 from src.paths import METRICS_DIR
 
 
-def main():
+def main() -> None:
     baseline_path = METRICS_DIR / "baseline_metrics.json"
     cnn_path = METRICS_DIR / "cnn_metrics.json"
 

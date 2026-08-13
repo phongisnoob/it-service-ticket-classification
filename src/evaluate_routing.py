@@ -16,7 +16,7 @@ THRESHOLD_PATH = METRICS_DIR / "selected_threshold.json"
 OUTPUT_PATH = METRICS_DIR / "routing_metrics.json"
 
 
-def main():
+def main() -> None:
     if not TEST_PREDICTIONS_PATH.exists():
         raise FileNotFoundError(f"Test predictions not found: {TEST_PREDICTIONS_PATH}")
 

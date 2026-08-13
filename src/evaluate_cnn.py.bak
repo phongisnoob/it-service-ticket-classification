@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -12,15 +13,44 @@ from torch.utils.data import DataLoader
 from src.cnn_data import TicketDataset
 from src.data import load_data, split_data
 from src.evaluate import calculate_calibration_metrics, calculate_metrics
-from src.paths import ARTIFACT_DIR, FIGURE_DIR, METRICS_DIR
 from src.textcnn import TextCNN
 
 # ============================================================
 # Paths
 # ============================================================
 
+ROOT_DIR = Path(__file__).resolve().parents[1]
 
-def main() -> None:
+ARTIFACT_DIR = (
+    ROOT_DIR
+    / "artifacts"
+    / "cnn"
+)
+
+METRICS_DIR = (
+    ROOT_DIR
+    / "reports"
+    / "metrics"
+)
+
+FIGURE_DIR = (
+    ROOT_DIR
+    / "reports"
+    / "figures"
+)
+
+METRICS_DIR.mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
+FIGURE_DIR.mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
+
+def main():
     with open(ARTIFACT_DIR / "vocab.json", encoding="utf-8") as f:
         vocab = json.load(f)
 
@@ -113,14 +143,14 @@ def main() -> None:
     with open(METRICS_DIR / "cnn_metrics.json", "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=4)
 
-    results = pd.DataFrame(
-        {
-            "ticket_id": test_df.index.to_numpy(),
-            "true_label": true_names,
-            "predicted_label": pred_names,
-            "confidence": all_confidence,
-        }
-    )
+
+
+    results = pd.DataFrame({
+        "ticket_id": test_df.index.to_numpy(),
+        "true_label": true_names,
+        "predicted_label": pred_names,
+        "confidence": all_confidence,
+    })
     results["correct"] = results["true_label"] == results["predicted_label"]
     results.to_csv(METRICS_DIR / "cnn_test_predictions.csv", index=False)
 

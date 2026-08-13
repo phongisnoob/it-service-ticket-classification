@@ -3,6 +3,7 @@ import json
 import platform
 import random
 import subprocess
+from typing import Any
 
 import numpy as np
 import torch
@@ -34,7 +35,7 @@ MAX_EPOCHS = 15
 PATIENCE = 3
 
 
-def set_seed(seed):
+def set_seed(seed: Any) -> Any:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -45,7 +46,7 @@ def set_seed(seed):
     torch.backends.cudnn.benchmark = False
 
 
-def train_cnn():
+def train_cnn() -> Any:
     set_seed(SEED)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Using device:", device)
@@ -120,12 +121,12 @@ def train_cnn():
 
     class_counts = np.bincount(y_train, minlength=num_classes)
     class_weights = len(y_train) / (num_classes * class_counts)
-    class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
+    class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)  # type: ignore
 
-    criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
+    criterion = torch.nn.CrossEntropyLoss(weight=class_weights)  # type: ignore
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-    def train_one_epoch():
+    def train_one_epoch() -> Any:
         model.train()
         total_loss = 0
         for inputs, targets in train_loader:
@@ -138,7 +139,7 @@ def train_cnn():
             total_loss += loss.item() * inputs.size(0)
         return total_loss / len(train_dataset)
 
-    def validate():
+    def validate() -> Any:
         model.eval()
         total_loss = 0
         all_targets, all_predictions = [], []
@@ -253,7 +254,7 @@ def train_cnn():
     print(f"Best model saved to {model_path} (SHA-256: {model_sha256[:12]}...)")
 
 
-def main():
+def main() -> None:
     train_cnn()
 
 

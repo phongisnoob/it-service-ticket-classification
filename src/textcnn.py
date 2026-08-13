@@ -1,3 +1,6 @@
+import typing
+from typing import Any
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -6,13 +9,13 @@ import torch.nn.functional as F
 class TextCNN(nn.Module):
     def __init__(
         self,
-        vocab_size,
-        embedding_dim,
-        num_filters,
-        kernel_sizes,
-        num_classes,
-        dropout=0.3,
-    ):
+        vocab_size: Any,
+        embedding_dim: Any,
+        num_filters: Any,
+        kernel_sizes: Any,
+        num_classes: Any,
+        dropout: Any = 0.3,
+    ) -> None:
 
         super().__init__()
 
@@ -40,7 +43,7 @@ class TextCNN(nn.Module):
             num_classes,
         )
 
-    def forward(self, x):
+    def forward(self, x: typing.Any) -> typing.Any:
 
         # [B, L]
         x = self.embedding(x)

@@ -11,7 +11,7 @@ from sklearn.pipeline import Pipeline
 from src.inference import BaselinePredictor, calculate_sha256
 
 
-def test_ml_smoke():
+def test_ml_smoke() -> None:
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
 

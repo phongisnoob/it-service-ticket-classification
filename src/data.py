@@ -1,6 +1,7 @@
 import hashlib
 import json
 import re
+from typing import Any
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -131,10 +132,10 @@ def save_split_manifest(
 
 def validate_persisted_splits(
     df: pd.DataFrame,
-    train_ids,
-    val_ids,
-    test_ids,
-    manifest: dict,
+    train_ids: Any,
+    val_ids: Any,
+    test_ids: Any,
+    manifest: dict,  # type: ignore
 ) -> None:
     """Validate persisted splits against the current dataset."""
     current_dataset_sha256 = calculate_file_sha256(DATA_PATH)

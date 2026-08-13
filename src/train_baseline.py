@@ -2,6 +2,7 @@ import datetime
 import json
 import platform
 import subprocess
+from typing import Any
 
 import joblib
 import sklearn
@@ -16,7 +17,7 @@ from src.hashing import calculate_file_sha256
 from src.paths import ARTIFACT_DIR, DATA_PATH, METRICS_DIR, ROOT_DIR
 
 
-def train_baseline():
+def train_baseline() -> Any:
     # -----------------------------------------
     # Load and split data
     # -----------------------------------------
@@ -133,7 +134,7 @@ def train_baseline():
     return calibrated_model, val_metrics
 
 
-def main():
+def main() -> None:
     train_baseline()
 
 

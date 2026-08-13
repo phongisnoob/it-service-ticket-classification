@@ -3,7 +3,7 @@ import pandas as pd
 from src.paths import METRICS_DIR
 
 
-def main():
+def main() -> None:
     results = pd.read_csv(METRICS_DIR / "cnn_test_predictions.csv")
 
     errors = results[not results["correct"]].copy()

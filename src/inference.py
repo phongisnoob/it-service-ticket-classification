@@ -1,5 +1,7 @@
 import hashlib
 import json
+import typing
+from typing import Any
 
 import joblib
 import numpy as np
@@ -35,10 +37,10 @@ def get_selected_backend() -> str:
     }:
         raise RuntimeError("Invalid selected_backend in model_selection.json.")
 
-    return backend
+    return backend  # type: ignore
 
 
-def calculate_sha256(path):
+def calculate_sha256(path: typing.Any) -> typing.Any:
     hasher = hashlib.sha256()
 
     with open(path, "rb") as file:
@@ -52,9 +54,9 @@ def calculate_sha256(path):
 
 
 def load_threshold(
-    threshold_path,
-    model_path,
-):
+    threshold_path: Any,
+    model_path: Any,
+) -> Any:
     if not model_path.exists():
         raise FileNotFoundError(f"Model artifact not found: {model_path}")
 
@@ -90,10 +92,10 @@ def load_threshold(
 
 
 def format_prediction(
-    labels,
-    probabilities,
-    threshold,
-):
+    labels: Any,
+    probabilities: Any,
+    threshold: Any,
+) -> Any:
 
     order = np.argsort(probabilities)[::-1]
 
@@ -122,7 +124,7 @@ def format_prediction(
 
 
 class BaselinePredictor:
-    def __init__(self):
+    def __init__(self) -> None:
 
         model_path = ARTIFACT_DIR / "baseline.joblib"
 
@@ -146,8 +148,8 @@ class BaselinePredictor:
 
     def predict(
         self,
-        text,
-    ):
+        text: Any,
+    ) -> Any:
 
         probabilities = self.model.predict_proba([text])[0]
 
@@ -162,7 +164,7 @@ class BaselinePredictor:
 
 
 class CNNPredictor:
-    def __init__(self):
+    def __init__(self) -> None:
 
         cnn_dir = ARTIFACT_DIR / "cnn"
 
@@ -235,8 +237,8 @@ class CNNPredictor:
 
     def predict(
         self,
-        text,
-    ):
+        text: Any,
+    ) -> Any:
 
         token_ids = encode_text(
             text,
@@ -272,8 +274,8 @@ class CNNPredictor:
 
 
 def get_predictor(
-    backend="auto",
-):
+    backend: typing.Any = "auto",
+) -> typing.Any:
     if backend == "auto":
         backend = get_selected_backend()
 

@@ -1,5 +1,6 @@
 import hashlib
 import json
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -13,7 +14,7 @@ THRESHOLD_PATH = METRICS_DIR / "baseline_selected_threshold.json"
 MODEL_PATH = ROOT_DIR / "artifacts" / "baseline.joblib"
 
 
-def calculate_sha256(path):
+def calculate_sha256(path: Any) -> Any:
     hasher = hashlib.sha256()
     with open(path, "rb") as file:
         for chunk in iter(lambda: file.read(1024 * 1024), b""):
@@ -21,7 +22,7 @@ def calculate_sha256(path):
     return hasher.hexdigest()
 
 
-def main():
+def main() -> None:
     if not INPUT_PATH.exists():
         raise FileNotFoundError(f"Input predictions not found: {INPUT_PATH}")
 
@@ -90,12 +91,12 @@ def main():
         print(f"Threshold:            {selected_threshold:.2f}")
         print(
             f"Coverage:             {selected['coverage']:.2%} "
-            f"(95% CI: [{cov_ci[0]:.2%}, {cov_ci[1]:.2%}])"
+            f"(95% CI: [{cov_ci[0]:.2%}, {cov_ci[1]:.2%}])"  # type: ignore
         )
         print(
             f"Auto-routed accuracy: "
             f"{selected['auto_routed_accuracy']:.2%} "
-            f"(95% CI: [{acc_ci[0]:.2%}, {acc_ci[1]:.2%}])"
+            f"(95% CI: [{acc_ci[0]:.2%}, {acc_ci[1]:.2%}])"  # type: ignore
         )
         print(f"Manual review rate:   {selected['manual_review_rate']:.2%}")
 
@@ -108,7 +109,7 @@ def main():
             "model_sha256": calculate_sha256(MODEL_PATH),
             "validation_coverage": float(selected["coverage"]),
             "validation_auto_routed_accuracy": float(selected["auto_routed_accuracy"]),
-            "validation_accuracy_ci_lower": float(acc_ci[0]),
+            "validation_accuracy_ci_lower": float(acc_ci[0]),  # type: ignore
             "validation_manual_review_rate": float(selected["manual_review_rate"]),
             "bootstrap_ci_95": {
                 "auto_routed_accuracy": acc_ci,

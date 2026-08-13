@@ -9,7 +9,7 @@ from src.paths import FIGURE_DIR, METRICS_DIR
 # ============================================================
 
 
-def main():
+def main() -> None:
     comparison = pd.read_csv(METRICS_DIR / "model_comparison.csv")
 
     metrics = [

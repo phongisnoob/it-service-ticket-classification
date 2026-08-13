@@ -1,4 +1,6 @@
+import typing
 from collections import Counter
+from typing import Any
 
 import torch
 from torch.utils.data import Dataset
@@ -7,22 +9,22 @@ PAD_TOKEN = "<PAD>"
 UNK_TOKEN = "<UNK>"
 
 
-def tokenize(text):
+def tokenize(text: Any) -> Any:
 
     return str(text).lower().split()
 
 
 def build_vocab(
-    texts,
-    min_freq=2,
-    max_vocab_size=30000,
-):
+    texts: Any,
+    min_freq: Any = 2,
+    max_vocab_size: Any = 30000,
+) -> Any:
     """
     Build training set vocab
     2+ = actual words
     """
 
-    counter = Counter()
+    counter: typing.Counter[str] = Counter()
 
     for text in texts:
         tokens = tokenize(text)
@@ -46,10 +48,10 @@ def build_vocab(
 
 
 def encode_text(
-    text,
-    vocab,
-    max_length=100,
-):
+    text: Any,
+    vocab: Any,
+    max_length: Any = 100,
+) -> Any:
     """
     Text -> fixed-length list of token IDs.
     """
@@ -70,14 +72,14 @@ def encode_text(
     return token_ids
 
 
-class TicketDataset(Dataset):
+class TicketDataset(Dataset[typing.Any]):
     def __init__(
         self,
-        texts,
-        labels,
-        vocab,
-        max_length=100,
-    ):
+        texts: Any,
+        labels: Any,
+        vocab: Any,
+        max_length: Any = 100,
+    ) -> None:
 
         self.texts = list(texts)
         self.labels = list(labels)
@@ -85,11 +87,11 @@ class TicketDataset(Dataset):
         self.vocab = vocab
         self.max_length = max_length
 
-    def __len__(self):
+    def __len__(self) -> Any:
 
         return len(self.texts)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: Any) -> Any:
 
         encoded_text = encode_text(
             self.texts[index],

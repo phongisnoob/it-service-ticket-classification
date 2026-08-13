@@ -23,7 +23,7 @@ THRESHOLD_PATH = METRICS_DIR / "baseline_selected_threshold.json"
 OUTPUT_PATH = METRICS_DIR / "baseline_routing_metrics.json"
 
 
-def main():
+def main() -> None:
     if not THRESHOLD_PATH.exists():
         raise FileNotFoundError(f"Threshold config not found: {THRESHOLD_PATH}")
     if not MODEL_PATH.exists():

@@ -10,14 +10,12 @@ from src.evaluate import (
     calculate_metrics,
     print_report,
 )
-from src.paths import ARTIFACT_DIR, ROOT_DIR
+from src.paths import ARTIFACT_DIR
 
 MODEL_PATH = ARTIFACT_DIR / "baseline.joblib"
 
-OUTPUT_PATH = ROOT_DIR / "reports" / "metrics" / "baseline_metrics.json"
 
-
-def main():
+def main() -> None:
     model = joblib.load(MODEL_PATH)
 
     _, _, test_df = split_data(
@@ -38,7 +36,7 @@ def main():
     )
 
     with open(
-        OUTPUT_PATH,
+        METRICS_DIR / "baseline_metrics.json",
         "w",
         encoding="utf-8",
     ) as file:
@@ -50,7 +48,7 @@ def main():
 
     print(
         "Saved test metrics to:",
-        OUTPUT_PATH,
+        METRICS_DIR / "baseline_metrics.json",
     )
 
 

@@ -25,8 +25,8 @@ MODEL_CONFIGS = {
 
 def load_candidate(
     backend: str,
-    paths: dict,
-) -> dict:
+    paths: dict,  # type: ignore
+) -> dict:  # type: ignore
     predictions_path = paths["predictions"]
     threshold_path = paths["threshold"]
 

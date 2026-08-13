@@ -2,6 +2,7 @@ import os
 import secrets
 import time
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import (
     Depends,
@@ -52,7 +53,7 @@ PREDICTION_CONFIDENCE = Histogram("prediction_confidence", "Prediction confidenc
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> Any:
     print(f"Loading model: {MODEL_BACKEND}")
     app.state.predictor = get_predictor(MODEL_BACKEND)
     yield
@@ -75,7 +76,7 @@ app.mount("/metrics", metrics_app)
 
 
 @app.middleware("http")
-async def monitor_requests(request: Request, call_next):
+async def monitor_requests(request: Request, call_next: Any) -> Any:
     start_time = time.time()
     response = await call_next(request)
     duration = time.time() - start_time
@@ -129,7 +130,7 @@ class PredictionResponse(BaseModel):
 
 
 @app.get("/")
-def root():
+def root() -> Any:
     return {"message": "IT Service Ticket Classifier"}
 
 
@@ -139,7 +140,7 @@ def root():
 
 
 @app.get("/health")
-def health():
+def health() -> Any:
     predictor = app.state.predictor
     return {
         "status": "ok",
@@ -162,7 +163,7 @@ API_KEY = os.getenv("API_KEY")
 
 def require_api_key(
     x_api_key: str | None = Header(default=None),
-):
+) -> Any:
     # Local/demo mode:
     # no API_KEY environment variable means no auth.
     if API_KEY is None:
@@ -184,8 +185,8 @@ def require_api_key(
 )
 def predict_ticket(
     request: TicketRequest,
-    _=Depends(require_api_key),
-):
+    _: Any = Depends(require_api_key),
+) -> Any:
     PREDICTION_REQUESTS.inc()
     result = app.state.predictor.predict(request.text)
 
