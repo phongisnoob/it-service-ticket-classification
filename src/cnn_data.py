@@ -34,7 +34,6 @@ def build_vocab(
     }
 
     for word, frequency in counter.most_common():
-
         if frequency < min_freq:
             continue
 
@@ -60,10 +59,7 @@ def encode_text(
     unk_index = vocab[UNK_TOKEN]
     pad_index = vocab[PAD_TOKEN]
 
-    token_ids = [
-        vocab.get(token, unk_index)
-        for token in tokens
-    ]
+    token_ids = [vocab.get(token, unk_index) for token in tokens]
 
     token_ids = token_ids[:max_length]
 
@@ -75,7 +71,6 @@ def encode_text(
 
 
 class TicketDataset(Dataset):
-
     def __init__(
         self,
         texts,
@@ -90,11 +85,9 @@ class TicketDataset(Dataset):
         self.vocab = vocab
         self.max_length = max_length
 
-
     def __len__(self):
 
         return len(self.texts)
-
 
     def __getitem__(self, index):
 

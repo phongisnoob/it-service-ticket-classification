@@ -3,7 +3,6 @@ import json
 import platform
 import random
 import subprocess
-from pathlib import Path
 
 import numpy as np
 import torch
@@ -12,16 +11,13 @@ from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import DataLoader
 
 from src.cnn_data import TicketDataset, build_vocab
-from src.data import DATA_PATH, calculate_file_sha256, load_data, split_data
+from src.data import load_data, split_data
+from src.hashing import calculate_file_sha256
+from src.paths import ARTIFACT_DIR, DATA_PATH, ROOT_DIR
 from src.textcnn import TextCNN
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-ARTIFACT_DIR = ROOT_DIR / "artifacts" / "cnn"
+ARTIFACT_DIR = ARTIFACT_DIR / "cnn"
 
-ARTIFACT_DIR.mkdir(
-    parents=True,
-    exist_ok=True,
-)
 
 SEED = 42
 MAX_VOCAB_SIZE = 30000
@@ -182,7 +178,7 @@ def train_cnn():
         "p50": p50,
         "p90": p90,
         "p95": p95,
-        "p99": p99
+        "p99": p99,
     }
 
     with open(ARTIFACT_DIR / "config.json", "w", encoding="utf-8") as f:
@@ -262,4 +258,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main()

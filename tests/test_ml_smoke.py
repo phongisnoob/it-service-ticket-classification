@@ -17,21 +17,30 @@ def test_ml_smoke():
 
         # 1. Create synthetic data
         texts = [
-            "password reset request", "forgot my password", "need to change password",
-            "network is down", "cannot connect to wifi", "internet not working",
-            "printer is out of paper", "need new toner for printer", "printer jam"
+            "password reset request",
+            "forgot my password",
+            "need to change password",
+            "network is down",
+            "cannot connect to wifi",
+            "internet not working",
+            "printer is out of paper",
+            "need new toner for printer",
+            "printer jam",
         ]
         y = [
-            "Access", "Access", "Access",
-            "Network", "Network", "Network",
-            "Hardware", "Hardware", "Hardware"
+            "Access",
+            "Access",
+            "Access",
+            "Network",
+            "Network",
+            "Network",
+            "Hardware",
+            "Hardware",
+            "Hardware",
         ]
 
         # 2. Train a real TF-IDF + LogisticRegression pipeline
-        pipeline = Pipeline([
-            ("tfidf", TfidfVectorizer()),
-            ("classifier", LogisticRegression())
-        ])
+        pipeline = Pipeline([("tfidf", TfidfVectorizer()), ("classifier", LogisticRegression())])
         pipeline.fit(texts, y)
 
         # 3. Serialize it with joblib
@@ -40,18 +49,16 @@ def test_ml_smoke():
 
         # 4. Create a threshold artifact containing the model SHA256
         model_sha256 = calculate_sha256(model_path)
-        threshold_config = {
-            "threshold": 0.85,
-            "model_sha256": model_sha256
-        }
+        threshold_config = {"threshold": 0.85, "model_sha256": model_sha256}
         threshold_path = tmp_path / "baseline_selected_threshold.json"
         with open(threshold_path, "w", encoding="utf-8") as f:
             json.dump(threshold_config, f)
 
         # 5. Load the model through the production BaselinePredictor using mocks for paths
-        with patch("src.inference.ARTIFACT_DIR", tmp_path), \
-             patch("src.inference.BASELINE_THRESHOLD_PATH", threshold_path):
-
+        with (
+            patch("src.inference.ARTIFACT_DIR", tmp_path),
+            patch("src.inference.BASELINE_THRESHOLD_PATH", threshold_path),
+        ):
             predictor = BaselinePredictor()
 
             # 6. Make a real prediction

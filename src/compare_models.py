@@ -1,15 +1,8 @@
 import json
-from pathlib import Path
 
 import pandas as pd
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-
-METRICS_DIR = (
-    ROOT_DIR
-    / "reports"
-    / "metrics"
-)
+from src.paths import METRICS_DIR
 
 
 def main():
@@ -26,16 +19,18 @@ def main():
     with open(cnn_path, "r", encoding="utf-8") as f:
         cnn = json.load(f)
 
-    comparison = pd.DataFrame([
-        {
-            "model": "TF-IDF + Logistic Regression",
-            **baseline,
-        },
-        {
-            "model": "TextCNN",
-            **cnn,
-        },
-    ])
+    comparison = pd.DataFrame(
+        [
+            {
+                "model": "TF-IDF + Logistic Regression",
+                **baseline,
+            },
+            {
+                "model": "TextCNN",
+                **cnn,
+            },
+        ]
+    )
 
     print(comparison.to_string(index=False))
 
@@ -45,4 +40,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main()

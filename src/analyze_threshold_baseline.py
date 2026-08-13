@@ -1,15 +1,12 @@
 import hashlib
 import json
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+from src.paths import METRICS_DIR, ROOT_DIR
 from src.routing_utils import compute_bootstrap_ci
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-
-METRICS_DIR = ROOT_DIR / "reports" / "metrics"
 INPUT_PATH = METRICS_DIR / "baseline_val_predictions.csv"
 OUTPUT_PATH = METRICS_DIR / "baseline_threshold_analysis.csv"
 THRESHOLD_PATH = METRICS_DIR / "baseline_selected_threshold.json"
@@ -22,7 +19,6 @@ def calculate_sha256(path):
         for chunk in iter(lambda: file.read(1024 * 1024), b""):
             hasher.update(chunk)
     return hasher.hexdigest()
-
 
 
 def main():
@@ -42,12 +38,14 @@ def main():
         routed_accuracy = routed["correct"].mean() if len(routed) > 0 else 0.0
         manual_review_rate = 1.0 - coverage
 
-        rows.append({
-            "threshold": round(float(threshold), 2),
-            "coverage": float(coverage),
-            "auto_routed_accuracy": float(routed_accuracy),
-            "manual_review_rate": float(manual_review_rate),
-        })
+        rows.append(
+            {
+                "threshold": round(float(threshold), 2),
+                "coverage": float(coverage),
+                "auto_routed_accuracy": float(routed_accuracy),
+                "manual_review_rate": float(manual_review_rate),
+            }
+        )
 
     threshold_results = pd.DataFrame(rows)
 
@@ -99,27 +97,19 @@ def main():
             f"{selected['auto_routed_accuracy']:.2%} "
             f"(95% CI: [{acc_ci[0]:.2%}, {acc_ci[1]:.2%}])"
         )
-        print(
-            f"Manual review rate:   "
-            f"{selected['manual_review_rate']:.2%}"
-        )
+        print(f"Manual review rate:   {selected['manual_review_rate']:.2%}")
 
         threshold_config = {
             "threshold": selected_threshold,
             "target_accuracy": TARGET_ACCURACY,
             "selection_rule": (
-                "maximize_coverage_subject_to_95pct_ci_lower_bound"
-                "_gte_target_accuracy"
+                "maximize_coverage_subject_to_95pct_ci_lower_bound_gte_target_accuracy"
             ),
             "model_sha256": calculate_sha256(MODEL_PATH),
             "validation_coverage": float(selected["coverage"]),
-            "validation_auto_routed_accuracy": float(
-                selected["auto_routed_accuracy"]
-            ),
+            "validation_auto_routed_accuracy": float(selected["auto_routed_accuracy"]),
             "validation_accuracy_ci_lower": float(acc_ci[0]),
-            "validation_manual_review_rate": float(
-                selected["manual_review_rate"]
-            ),
+            "validation_manual_review_rate": float(selected["manual_review_rate"]),
             "bootstrap_ci_95": {
                 "auto_routed_accuracy": acc_ci,
                 "coverage": cov_ci,
@@ -132,9 +122,7 @@ def main():
         print("\nSaved selected threshold to:", THRESHOLD_PATH)
 
     else:
-        best = threshold_results.loc[
-            threshold_results["auto_routed_accuracy"].idxmax()
-        ]
+        best = threshold_results.loc[threshold_results["auto_routed_accuracy"].idxmax()]
 
         print(
             "\nNo threshold satisfied the routing requirement:"
@@ -145,14 +133,8 @@ def main():
         print("=" * 75)
         print(f"Threshold:            {best['threshold']:.2f}")
         print(f"Coverage:             {best['coverage']:.2%}")
-        print(
-            f"Auto-routed accuracy: "
-            f"{best['auto_routed_accuracy']:.2%}"
-        )
-        print(
-            f"Manual review rate:   "
-            f"{best['manual_review_rate']:.2%}"
-        )
+        print(f"Auto-routed accuracy: {best['auto_routed_accuracy']:.2%}")
+        print(f"Manual review rate:   {best['manual_review_rate']:.2%}")
 
         THRESHOLD_PATH.unlink(missing_ok=True)
 

@@ -1,12 +1,7 @@
 import subprocess
 import sys
-from pathlib import Path
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-
-METRICS_DIR = ROOT_DIR / "reports" / "metrics"
-CNN_MODEL_PATH = ROOT_DIR / "artifacts" / "cnn" / "textcnn.pt"
-
+from src.paths import CNN_MODEL_PATH, METRICS_DIR, ROOT_DIR
 
 BASELINE_OUTPUTS = [
     "baseline_val_predictions.csv",
@@ -66,10 +61,7 @@ def main() -> None:
 
     print("\nRegenerating baseline evaluation artifacts...")
 
-    remove_stale_outputs(
-        BASELINE_OUTPUTS
-        + COMMON_OUTPUTS
-    )
+    remove_stale_outputs(BASELINE_OUTPUTS + COMMON_OUTPUTS)
 
     run_module("src.evaluate_val_baseline")
     run_module("src.analyze_threshold_baseline")
@@ -80,9 +72,7 @@ def main() -> None:
         print("\nCNN artifact detected.")
         print("Regenerating CNN evaluation artifacts...")
 
-        remove_stale_outputs(
-            CNN_OUTPUTS
-        )
+        remove_stale_outputs(CNN_OUTPUTS)
 
         run_module("src.evaluate_val_cnn")
         run_module("src.analyze_threshold_cnn")
@@ -92,10 +82,7 @@ def main() -> None:
         run_module("src.compare_models")
         run_module("src.select_model")
     else:
-        print(
-            "\nCNN model not found. "
-            "Skipping CNN comparison/model selection."
-        )
+        print("\nCNN model not found. Skipping CNN comparison/model selection.")
 
     print("\nEvaluation pipeline completed successfully.")
 

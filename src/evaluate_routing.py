@@ -1,35 +1,19 @@
 import json
-from pathlib import Path
 
 import pandas as pd
+
+from src.paths import METRICS_DIR
 
 # ============================================================
 # Paths
 # ============================================================
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
 
-METRICS_DIR = (
-    ROOT_DIR
-    / "reports"
-    / "metrics"
-)
+TEST_PREDICTIONS_PATH = METRICS_DIR / "cnn_test_predictions.csv"
 
+THRESHOLD_PATH = METRICS_DIR / "selected_threshold.json"
 
-TEST_PREDICTIONS_PATH = (
-    METRICS_DIR
-    / "cnn_test_predictions.csv"
-)
-
-THRESHOLD_PATH = (
-    METRICS_DIR
-    / "selected_threshold.json"
-)
-
-OUTPUT_PATH = (
-    METRICS_DIR
-    / "routing_metrics.json"
-)
+OUTPUT_PATH = METRICS_DIR / "routing_metrics.json"
 
 
 def main():
@@ -88,4 +72,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main()

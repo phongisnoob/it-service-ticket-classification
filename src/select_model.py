@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 import pandas as pd
 from sklearn.metrics import (
@@ -7,33 +6,19 @@ from sklearn.metrics import (
     f1_score,
 )
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-
-METRICS_DIR = (
-    ROOT_DIR
-    / "reports"
-    / "metrics"
-)
+from src.paths import METRICS_DIR
 
 TARGET_ACCURACY = 0.90
 
 
 MODEL_CONFIGS = {
     "baseline": {
-        "predictions":
-            METRICS_DIR
-            / "baseline_val_predictions.csv",
-        "threshold":
-            METRICS_DIR
-            / "baseline_selected_threshold.json",
+        "predictions": METRICS_DIR / "baseline_val_predictions.csv",
+        "threshold": METRICS_DIR / "baseline_selected_threshold.json",
     },
     "cnn": {
-        "predictions":
-            METRICS_DIR
-            / "cnn_val_predictions.csv",
-        "threshold":
-            METRICS_DIR
-            / "selected_threshold.json",
+        "predictions": METRICS_DIR / "cnn_val_predictions.csv",
+        "threshold": METRICS_DIR / "selected_threshold.json",
     },
 }
 
@@ -46,20 +31,12 @@ def load_candidate(
     threshold_path = paths["threshold"]
 
     if not predictions_path.exists():
-        raise FileNotFoundError(
-            f"Validation predictions not found: "
-            f"{predictions_path}"
-        )
+        raise FileNotFoundError(f"Validation predictions not found: {predictions_path}")
 
     if not threshold_path.exists():
-        raise FileNotFoundError(
-            f"Threshold config not found: "
-            f"{threshold_path}"
-        )
+        raise FileNotFoundError(f"Threshold config not found: {threshold_path}")
 
-    predictions = pd.read_csv(
-        predictions_path
-    )
+    predictions = pd.read_csv(predictions_path)
 
     with open(
         threshold_path,
@@ -68,9 +45,7 @@ def load_candidate(
     ) as file:
         threshold = json.load(file)
 
-    ci_lower = threshold.get(
-        "validation_accuracy_ci_lower"
-    )
+    ci_lower = threshold.get("validation_accuracy_ci_lower")
 
     if ci_lower is None:
         raise RuntimeError(
@@ -95,23 +70,11 @@ def load_candidate(
                 zero_division=0,
             )
         ),
-        "threshold": float(
-            threshold["threshold"]
-        ),
-        "validation_coverage": float(
-            threshold["validation_coverage"]
-        ),
-        "validation_auto_routed_accuracy": float(
-            threshold[
-                "validation_auto_routed_accuracy"
-            ]
-        ),
-        "validation_accuracy_ci_lower": float(
-            ci_lower
-        ),
-        "model_sha256": threshold[
-            "model_sha256"
-        ],
+        "threshold": float(threshold["threshold"]),
+        "validation_coverage": float(threshold["validation_coverage"]),
+        "validation_auto_routed_accuracy": float(threshold["validation_auto_routed_accuracy"]),
+        "validation_accuracy_ci_lower": float(ci_lower),
+        "model_sha256": threshold["model_sha256"],
     }
 
 
@@ -121,16 +84,13 @@ def main() -> None:
             backend,
             paths,
         )
-        for backend, paths
-        in MODEL_CONFIGS.items()
+        for backend, paths in MODEL_CONFIGS.items()
     ]
 
     eligible = [
         candidate
         for candidate in candidates
-        if candidate[
-            "validation_accuracy_ci_lower"
-        ] >= TARGET_ACCURACY
+        if candidate["validation_accuracy_ci_lower"] >= TARGET_ACCURACY
     ]
 
     if not eligible:
@@ -143,12 +103,8 @@ def main() -> None:
     winner = max(
         eligible,
         key=lambda candidate: (
-            candidate[
-                "validation_coverage"
-            ],
-            candidate[
-                "validation_macro_f1"
-            ],
+            candidate["validation_coverage"],
+            candidate["validation_macro_f1"],
         ),
     )
 
@@ -160,22 +116,13 @@ def main() -> None:
             "lower 95% auto-routing accuracy CI "
             "meeting the target; Macro F1 as tie-breaker"
         ),
-        "selected_backend": winner[
-            "backend"
-        ],
-        "selected_threshold": winner[
-            "threshold"
-        ],
-        "selected_model_sha256": winner[
-            "model_sha256"
-        ],
+        "selected_backend": winner["backend"],
+        "selected_threshold": winner["threshold"],
+        "selected_model_sha256": winner["model_sha256"],
         "candidates": candidates,
     }
 
-    output_path = (
-        METRICS_DIR
-        / "model_selection.json"
-    )
+    output_path = METRICS_DIR / "model_selection.json"
 
     with open(
         output_path,

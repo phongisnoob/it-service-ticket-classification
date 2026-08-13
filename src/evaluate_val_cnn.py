@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 import pandas as pd
 import torch
@@ -8,27 +7,21 @@ from torch.utils.data import DataLoader
 from src.cnn_data import TicketDataset
 from src.data import load_data, split_data
 from src.evaluate import calculate_calibration_metrics, calculate_metrics
+from src.paths import METRICS_DIR, ROOT_DIR
 from src.textcnn import TextCNN
 
 # ============================================================
 # Paths
 # ============================================================
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
 
 CNN_DIR = ROOT_DIR / "artifacts" / "cnn"
-
-METRICS_DIR = ROOT_DIR / "reports" / "metrics"
-
-METRICS_DIR.mkdir(
-    parents=True,
-    exist_ok=True,
-)
 
 
 # ============================================================
 # Load vocabulary
 # ============================================================
+
 
 def main():
     with open(CNN_DIR / "vocab.json", "r", encoding="utf-8") as f:
@@ -113,12 +106,14 @@ def main():
     print(f"Brier score: {calib_metrics['top_label_brier_score']:.6f}")
     print(f"Expected Calibration Error (ECE): {calib_metrics['expected_calibration_error']:.6f}")
 
-    results = pd.DataFrame({
-        "ticket_id": val_df.index.to_numpy(),
-        "true_label": true_labels,
-        "predicted_label": predicted_labels,
-        "confidence": all_confidences,
-    })
+    results = pd.DataFrame(
+        {
+            "ticket_id": val_df.index.to_numpy(),
+            "true_label": true_labels,
+            "predicted_label": predicted_labels,
+            "confidence": all_confidences,
+        }
+    )
     results["correct"] = results["true_label"] == results["predicted_label"]
 
     output_path = METRICS_DIR / "cnn_val_predictions.csv"

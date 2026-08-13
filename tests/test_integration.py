@@ -1,3 +1,5 @@
+from src.paths import BASELINE_MODEL_PATH, ROOT_DIR
+
 """Integration tests for the real ML serving stack.
 
 These tests load actual model artifacts and verify that the full
@@ -6,7 +8,6 @@ files to be present (not run in CI).
 """
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -17,8 +18,6 @@ from src.inference import (
     load_threshold,
 )
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-BASELINE_MODEL_PATH = ROOT_DIR / "artifacts" / "baseline.joblib"
 BASELINE_THRESHOLD_PATH_LOCAL = (
     ROOT_DIR / "reports" / "metrics" / "baseline_selected_threshold.json"
 )
@@ -61,9 +60,7 @@ class TestBaselineInference:
         return BaselinePredictor()
 
     def test_predict_returns_valid_structure(self, predictor):
-        result = predictor.predict(
-            "I forgot my password and cannot access my account"
-        )
+        result = predictor.predict("I forgot my password and cannot access my account")
 
         assert result["category"]
         assert isinstance(result["category"], str)
