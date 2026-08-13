@@ -2,7 +2,6 @@ import datetime
 import json
 import platform
 import subprocess
-from pathlib import Path
 
 import joblib
 import sklearn
@@ -11,16 +10,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 
-from src.data import DATA_PATH, calculate_file_sha256, load_data, split_data
+from src.data import load_data, split_data
 from src.evaluate import calculate_metrics
-
-ROOT_DIR = Path(__file__).resolve().parents[1]
-
-ARTIFACT_DIR = ROOT_DIR / "artifacts"
-METRICS_DIR = ROOT_DIR / "reports" / "metrics"
-
-ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
-METRICS_DIR.mkdir(parents=True, exist_ok=True)
+from src.hashing import calculate_file_sha256
+from src.paths import ARTIFACT_DIR, DATA_PATH, METRICS_DIR, ROOT_DIR
 
 
 def train_baseline():
@@ -39,26 +32,27 @@ def train_baseline():
     # -----------------------------------------
     # Base Model Pipeline
     # -----------------------------------------
-    base_pipeline = Pipeline([
-        (
-            "tfidf",
-            TfidfVectorizer(
-                ngram_range=(1, 2),
-                min_df=2,
-                max_df=0.98,
-                sublinear_tf=True,
-                max_features=100_000,
+    base_pipeline = Pipeline(
+        [
+            (
+                "tfidf",
+                TfidfVectorizer(
+                    ngram_range=(1, 2),
+                    min_df=2,
+                    max_df=0.98,
+                    sublinear_tf=True,
+                    max_features=100_000,
+                ),
             ),
-        ),
-        (
-            "classifier",
-            LogisticRegression(
-                max_iter=2000,
-                class_weight="balanced",
+            (
+                "classifier",
+                LogisticRegression(
+                    max_iter=2000,
+                    class_weight="balanced",
+                ),
             ),
-        ),
-    ])
-
+        ]
+    )
 
     # -----------------------------------------
     # Calibration Stage

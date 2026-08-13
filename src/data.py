@@ -1,25 +1,12 @@
 import hashlib
 import json
 import re
-from pathlib import Path
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-
-DATA_PATH = (
-    ROOT_DIR
-    / "data"
-    / "raw"
-    / "all_tickets_processed_improved_v3.csv"
-)
-
-REPORT_DATA_DIR = (
-    ROOT_DIR
-    / "reports"
-    / "data"
-)
+from src.hashing import calculate_file_sha256
+from src.paths import DATA_PATH, REPORT_DATA_DIR
 
 
 def normalize_text(text: str) -> str:
@@ -29,20 +16,6 @@ def normalize_text(text: str) -> str:
         " ",
         str(text).lower().strip(),
     )
-
-
-def calculate_file_sha256(path: Path) -> str:
-    """Compute SHA-256 hash of a file."""
-    hasher = hashlib.sha256()
-
-    with open(path, "rb") as file:
-        for chunk in iter(
-            lambda: file.read(1024 * 1024),
-            b"",
-        ):
-            hasher.update(chunk)
-
-    return hasher.hexdigest()
 
 
 def load_data(
@@ -72,19 +45,12 @@ def load_data(
     df["Topic_group"] = df["Topic_group"].astype(str)
 
     # Normalize text for duplicate detection.
-    df["document_normalized"] = (
-        df["Document"]
-        .apply(normalize_text)
-    )
+    df["document_normalized"] = df["Document"].apply(normalize_text)
 
     # Create a stable ticket ID based on normalized text + label.
     df["ticket_id"] = df.apply(
         lambda row: hashlib.sha256(
-            (
-                row["document_normalized"]
-                + "|"
-                + row["Topic_group"]
-            ).encode("utf-8")
+            (row["document_normalized"] + "|" + row["Topic_group"]).encode("utf-8")
         ).hexdigest()[:16],
         axis=1,
     )
@@ -122,57 +88,33 @@ def save_split_manifest(
         exist_ok=True,
     )
 
-    train_ids_path = (
-        REPORT_DATA_DIR
-        / "train_ids.csv"
-    )
-    val_ids_path = (
-        REPORT_DATA_DIR
-        / "val_ids.csv"
-    )
-    test_ids_path = (
-        REPORT_DATA_DIR
-        / "test_ids.csv"
-    )
-    manifest_path = (
-        REPORT_DATA_DIR
-        / "data_manifest.json"
-    )
+    train_ids_path = REPORT_DATA_DIR / "train_ids.csv"
+    val_ids_path = REPORT_DATA_DIR / "val_ids.csv"
+    test_ids_path = REPORT_DATA_DIR / "test_ids.csv"
+    manifest_path = REPORT_DATA_DIR / "data_manifest.json"
 
-    pd.DataFrame(
-        {"id": train_df.index}
-    ).to_csv(
+    pd.DataFrame({"id": train_df.index}).to_csv(
         train_ids_path,
         index=False,
     )
 
-    pd.DataFrame(
-        {"id": val_df.index}
-    ).to_csv(
+    pd.DataFrame({"id": val_df.index}).to_csv(
         val_ids_path,
         index=False,
     )
 
-    pd.DataFrame(
-        {"id": test_df.index}
-    ).to_csv(
+    pd.DataFrame({"id": test_df.index}).to_csv(
         test_ids_path,
         index=False,
     )
 
     manifest = {
-        "dataset_sha256": calculate_file_sha256(
-            DATA_PATH
-        ),
+        "dataset_sha256": calculate_file_sha256(DATA_PATH),
         "random_seed": random_state,
         "train_rows": len(train_df),
         "validation_rows": len(val_df),
         "test_rows": len(test_df),
-        "total_rows": (
-            len(train_df)
-            + len(val_df)
-            + len(test_df)
-        ),
+        "total_rows": (len(train_df) + len(val_df) + len(test_df)),
     }
 
     with open(
@@ -195,24 +137,16 @@ def validate_persisted_splits(
     manifest: dict,
 ) -> None:
     """Validate persisted splits against the current dataset."""
-    current_dataset_sha256 = (
-        calculate_file_sha256(DATA_PATH)
-    )
+    current_dataset_sha256 = calculate_file_sha256(DATA_PATH)
 
-    stored_dataset_sha256 = manifest.get(
-        "dataset_sha256"
-    )
+    stored_dataset_sha256 = manifest.get("dataset_sha256")
 
     if stored_dataset_sha256 is None:
         raise RuntimeError(
-            "Persisted split manifest does not contain "
-            "'dataset_sha256'. Regenerate the splits."
+            "Persisted split manifest does not contain 'dataset_sha256'. Regenerate the splits."
         )
 
-    if (
-        current_dataset_sha256
-        != stored_dataset_sha256
-    ):
+    if current_dataset_sha256 != stored_dataset_sha256:
         raise RuntimeError(
             "Dataset has changed since the persisted "
             "splits were created. Regenerate "
@@ -226,44 +160,21 @@ def validate_persisted_splits(
     current_ids = set(df.index)
 
     # Ensure train, validation, and test are mutually exclusive.
-    if not train_id_set.isdisjoint(
-        val_id_set
-    ):
-        raise RuntimeError(
-            "Persisted train and validation "
-            "splits overlap."
-        )
+    if not train_id_set.isdisjoint(val_id_set):
+        raise RuntimeError("Persisted train and validation splits overlap.")
 
-    if not train_id_set.isdisjoint(
-        test_id_set
-    ):
-        raise RuntimeError(
-            "Persisted train and test "
-            "splits overlap."
-        )
+    if not train_id_set.isdisjoint(test_id_set):
+        raise RuntimeError("Persisted train and test splits overlap.")
 
-    if not val_id_set.isdisjoint(
-        test_id_set
-    ):
-        raise RuntimeError(
-            "Persisted validation and test "
-            "splits overlap."
-        )
+    if not val_id_set.isdisjoint(test_id_set):
+        raise RuntimeError("Persisted validation and test splits overlap.")
 
-    persisted_ids = (
-        train_id_set
-        | val_id_set
-        | test_id_set
-    )
+    persisted_ids = train_id_set | val_id_set | test_id_set
 
     # Every row in the current dataset must belong to exactly one split.
     if persisted_ids != current_ids:
-        missing_from_splits = (
-            current_ids - persisted_ids
-        )
-        unknown_in_splits = (
-            persisted_ids - current_ids
-        )
+        missing_from_splits = current_ids - persisted_ids
+        unknown_in_splits = persisted_ids - current_ids
 
         raise RuntimeError(
             "Persisted splits do not exactly match "
@@ -276,64 +187,24 @@ def validate_persisted_splits(
         )
 
     # Validate counts stored in the manifest.
-    expected_train_rows = manifest.get(
-        "train_rows"
-    )
-    expected_val_rows = manifest.get(
-        "validation_rows"
-    )
-    expected_test_rows = manifest.get(
-        "test_rows"
-    )
-    expected_total_rows = manifest.get(
-        "total_rows"
-    )
+    expected_train_rows = manifest.get("train_rows")
+    expected_val_rows = manifest.get("validation_rows")
+    expected_test_rows = manifest.get("test_rows")
+    expected_total_rows = manifest.get("total_rows")
 
-    if (
-        expected_train_rows is not None
-        and len(train_ids)
-        != expected_train_rows
-    ):
-        raise RuntimeError(
-            "Persisted train split size does not "
-            "match data_manifest.json."
-        )
+    if expected_train_rows is not None and len(train_ids) != expected_train_rows:
+        raise RuntimeError("Persisted train split size does not match data_manifest.json.")
 
-    if (
-        expected_val_rows is not None
-        and len(val_ids)
-        != expected_val_rows
-    ):
-        raise RuntimeError(
-            "Persisted validation split size does not "
-            "match data_manifest.json."
-        )
+    if expected_val_rows is not None and len(val_ids) != expected_val_rows:
+        raise RuntimeError("Persisted validation split size does not match data_manifest.json.")
 
-    if (
-        expected_test_rows is not None
-        and len(test_ids)
-        != expected_test_rows
-    ):
-        raise RuntimeError(
-            "Persisted test split size does not "
-            "match data_manifest.json."
-        )
+    if expected_test_rows is not None and len(test_ids) != expected_test_rows:
+        raise RuntimeError("Persisted test split size does not match data_manifest.json.")
 
-    total_rows = (
-        len(train_ids)
-        + len(val_ids)
-        + len(test_ids)
-    )
+    total_rows = len(train_ids) + len(val_ids) + len(test_ids)
 
-    if (
-        expected_total_rows is not None
-        and total_rows
-        != expected_total_rows
-    ):
-        raise RuntimeError(
-            "Persisted total split size does not "
-            "match data_manifest.json."
-        )
+    if expected_total_rows is not None and total_rows != expected_total_rows:
+        raise RuntimeError("Persisted total split size does not match data_manifest.json.")
 
 
 def split_data(
@@ -358,26 +229,12 @@ def split_data(
     Otherwise, a new stratified 70/15/15 split is created.
     """
     if df is None:
-        df = load_data(
-            deduplicate=True
-        )
+        df = load_data(deduplicate=True)
 
-    train_ids_path = (
-        REPORT_DATA_DIR
-        / "train_ids.csv"
-    )
-    val_ids_path = (
-        REPORT_DATA_DIR
-        / "val_ids.csv"
-    )
-    test_ids_path = (
-        REPORT_DATA_DIR
-        / "test_ids.csv"
-    )
-    manifest_path = (
-        REPORT_DATA_DIR
-        / "data_manifest.json"
-    )
+    train_ids_path = REPORT_DATA_DIR / "train_ids.csv"
+    val_ids_path = REPORT_DATA_DIR / "val_ids.csv"
+    test_ids_path = REPORT_DATA_DIR / "test_ids.csv"
+    manifest_path = REPORT_DATA_DIR / "data_manifest.json"
 
     persisted_files_exist = all(
         [
@@ -388,27 +245,18 @@ def split_data(
         ]
     )
 
-    if (
-        use_persisted
-        and persisted_files_exist
-    ):
+    if use_persisted and persisted_files_exist:
         with open(
             manifest_path,
             encoding="utf-8",
         ) as file:
             manifest = json.load(file)
 
-        train_ids = pd.read_csv(
-            train_ids_path
-        )["id"].values
+        train_ids = pd.read_csv(train_ids_path)["id"].values
 
-        val_ids = pd.read_csv(
-            val_ids_path
-        )["id"].values
+        val_ids = pd.read_csv(val_ids_path)["id"].values
 
-        test_ids = pd.read_csv(
-            test_ids_path
-        )["id"].values
+        test_ids = pd.read_csv(test_ids_path)["id"].values
 
         validate_persisted_splits(
             df=df,
@@ -418,17 +266,11 @@ def split_data(
             manifest=manifest,
         )
 
-        train_df = df.loc[
-            train_ids
-        ].copy()
+        train_df = df.loc[train_ids].copy()
 
-        val_df = df.loc[
-            val_ids
-        ].copy()
+        val_df = df.loc[val_ids].copy()
 
-        test_df = df.loc[
-            test_ids
-        ].copy()
+        test_df = df.loc[test_ids].copy()
 
         return (
             train_df,

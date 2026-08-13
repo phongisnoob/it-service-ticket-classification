@@ -4,7 +4,6 @@ import torch.nn.functional as F
 
 
 class TextCNN(nn.Module):
-
     def __init__(
         self,
         vocab_size,
@@ -23,24 +22,23 @@ class TextCNN(nn.Module):
             padding_idx=0,
         )
 
-        self.convs = nn.ModuleList([
-            nn.Conv1d(
-                in_channels=embedding_dim,
-                out_channels=num_filters,
-                kernel_size=k,
-            )
-            for k in kernel_sizes
-        ])
-
-        self.dropout = nn.Dropout(
-            dropout
+        self.convs = nn.ModuleList(
+            [
+                nn.Conv1d(
+                    in_channels=embedding_dim,
+                    out_channels=num_filters,
+                    kernel_size=k,
+                )
+                for k in kernel_sizes
+            ]
         )
+
+        self.dropout = nn.Dropout(dropout)
 
         self.fc = nn.Linear(
             num_filters * len(kernel_sizes),
             num_classes,
         )
-
 
     def forward(self, x):
 
@@ -55,10 +53,7 @@ class TextCNN(nn.Module):
         features = []
 
         for conv in self.convs:
-
-            feature = F.relu(
-                conv(x)
-            )
+            feature = F.relu(conv(x))
 
             feature = F.adaptive_max_pool1d(
                 feature,

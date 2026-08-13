@@ -1,40 +1,26 @@
 import json
-from pathlib import Path
 
 import joblib
 import numpy as np
 import pandas as pd
 
 from src.data import load_data, split_data
+from src.paths import (
+    BASELINE_MODEL_PATH as MODEL_PATH,
+)
+from src.paths import (
+    METRICS_DIR,
+)
 from src.routing_utils import compute_bootstrap_ci
 
 # ============================================================
 # Paths
 # ============================================================
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
 
-MODEL_PATH = (
-    ROOT_DIR
-    / "artifacts"
-    / "baseline.joblib"
-)
+THRESHOLD_PATH = METRICS_DIR / "baseline_selected_threshold.json"
 
-METRICS_DIR = (
-    ROOT_DIR
-    / "reports"
-    / "metrics"
-)
-
-THRESHOLD_PATH = (
-    METRICS_DIR
-    / "baseline_selected_threshold.json"
-)
-
-OUTPUT_PATH = (
-    METRICS_DIR
-    / "baseline_routing_metrics.json"
-)
+OUTPUT_PATH = METRICS_DIR / "baseline_routing_metrics.json"
 
 
 def main():
@@ -58,11 +44,13 @@ def main():
     predictions = model.predict(X_test)
     confidence = np.max(probabilities, axis=1)
 
-    results = pd.DataFrame({
-        "true_label": y_test,
-        "predicted_label": predictions,
-        "confidence": confidence,
-    })
+    results = pd.DataFrame(
+        {
+            "true_label": y_test,
+            "predicted_label": predictions,
+            "confidence": confidence,
+        }
+    )
     results["correct"] = results["true_label"] == results["predicted_label"]
 
     auto_routed_mask = results["confidence"] >= threshold
@@ -113,4 +101,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main()
