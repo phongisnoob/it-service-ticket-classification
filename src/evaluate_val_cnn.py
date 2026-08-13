@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from src.cnn_data import TicketDataset
 from src.data import load_data, split_data
-from src.evaluate import calculate_metrics
+from src.evaluate import calculate_metrics, calculate_calibration_metrics
 from src.textcnn import TextCNN
 
 # ============================================================
@@ -97,9 +97,21 @@ def main():
     with open(METRICS_DIR / "cnn_val_metrics.json", "w", encoding="utf-8") as f:
         json.dump(val_metrics, f, indent=4)
 
+    calib_metrics = calculate_calibration_metrics(
+        y_true_labels=true_labels,
+        y_pred_labels=predicted_labels,
+        y_confidence=all_confidences,
+    )
+    with open(METRICS_DIR / "cnn_val_calibration_metrics.json", "w", encoding="utf-8") as f:
+        json.dump(calib_metrics, f, indent=4)
+
     print("\nCNN Validation Metrics")
     for key, value in val_metrics.items():
         print(f"{key}: {value:.4f}")
+        
+    print("\nCalibration Quality:")
+    print(f"Brier score: {calib_metrics['brier_score']:.6f}")
+    print(f"Expected Calibration Error (ECE): {calib_metrics['expected_calibration_error']:.6f}")
 
     results = pd.DataFrame({
         "ticket_id": val_df.index.to_numpy(),

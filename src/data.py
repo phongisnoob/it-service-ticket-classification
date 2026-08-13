@@ -48,11 +48,21 @@ def load_data(deduplicate: bool = True):
     df["Topic_group"] = df["Topic_group"].astype(str)
     df["document_normalized"] = df["Document"].apply(normalize_text)
 
+    # Create stable ticket ID by hashing the document and topic group
+    df["ticket_id"] = df.apply(
+        lambda row: hashlib.sha256(
+            (row["document_normalized"] + "|" + row["Topic_group"]).encode("utf-8")
+        ).hexdigest()[:16],
+        axis=1,
+    )
+
     if deduplicate:
         df = df.drop_duplicates(
             subset=["document_normalized"],
             keep="first",
         ).copy()
+        
+    df = df.set_index("ticket_id")
 
     return df
 

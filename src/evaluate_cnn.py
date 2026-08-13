@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 
 from src.cnn_data import TicketDataset
 from src.data import load_data, split_data
-from src.evaluate import calculate_metrics
+from src.evaluate import calculate_metrics, calculate_calibration_metrics
 from src.textcnn import TextCNN
 
 # ============================================================
@@ -113,6 +113,17 @@ def main():
             all_confidence.extend(confidence.cpu().tolist())
 
     metrics = calculate_metrics(all_true, all_pred)
+    
+    true_names = [labels[index] for index in all_true]
+    pred_names = [labels[index] for index in all_pred]
+    
+    calib_metrics = calculate_calibration_metrics(
+        y_true_labels=true_names,
+        y_pred_labels=pred_names,
+        y_confidence=all_confidence,
+    )
+    metrics.update(calib_metrics)
+    
     print("\nTest Metrics")
     print("=" * 40)
     for key, value in metrics.items():
@@ -132,8 +143,7 @@ def main():
     with open(METRICS_DIR / "cnn_metrics.json", "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=4)
 
-    true_names = [labels[index] for index in all_true]
-    pred_names = [labels[index] for index in all_pred]
+
 
     results = pd.DataFrame({
         "ticket_id": test_df.index.to_numpy(),
