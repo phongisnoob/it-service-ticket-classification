@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from src.data import load_data, split_data
 from src.cnn_data import TicketDataset
 from src.textcnn import TextCNN
-
+from src.evaluate import calculate_metrics
 
 # ============================================================
 # Paths
@@ -201,6 +201,26 @@ predicted_labels = [
     for index in all_predictions
 ]
 
+val_metrics = calculate_metrics(
+    true_labels,
+    predicted_labels,
+)
+
+with open(
+    METRICS_DIR / "cnn_val_metrics.json",
+    "w",
+    encoding="utf-8",
+) as f:
+    json.dump(
+        val_metrics,
+        f,
+        indent=4,
+    )
+
+print("\nCNN Validation Metrics")
+
+for key, value in val_metrics.items():
+    print(f"{key}: {value:.4f}")
 
 # ============================================================
 # Save results
