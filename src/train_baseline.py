@@ -1,15 +1,18 @@
-from pathlib import Path
+import datetime
 import json
+from pathlib import Path
 import platform
-import sklearn
-import joblib
+import subprocess
 
-from sklearn.pipeline import Pipeline
+import joblib
+import sklearn
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
 
-from src.data import load_data, split_data
-from src.evaluate import calculate_metrics, print_report
+from src.data import DATA_PATH, calculate_file_sha256, load_data, split_data
+from src.evaluate import calculate_metrics
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -21,14 +24,11 @@ ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 METRICS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def main():
-
+def train_baseline():
     # -----------------------------------------
     # Load and split data
     # -----------------------------------------
-
     df = load_data()
-
     train_df, val_df, _ = split_data(df)
 
     X_train = train_df["Document"]
@@ -37,13 +37,10 @@ def main():
     X_val = val_df["Document"]
     y_val = val_df["Topic_group"]
 
-
-
     # -----------------------------------------
-    # Model
+    # Base Model Pipeline
     # -----------------------------------------
-
-    model = Pipeline([
+    base_pipeline = Pipeline([
         (
             "tfidf",
             TfidfVectorizer(
@@ -52,64 +49,78 @@ def main():
                 max_df=0.98,
                 sublinear_tf=True,
                 max_features=100_000,
-            )
+            ),
         ),
         (
             "classifier",
             LogisticRegression(
                 max_iter=2000,
                 class_weight="balanced",
-            )
+            ),
         ),
     ])
 
+    print("Training baseline pipeline...")
+    base_pipeline.fit(X_train, y_train)
 
     # -----------------------------------------
-    # Train
+    # Calibration Stage
     # -----------------------------------------
-
-    print("Training baseline...")
-
-    model.fit(
-        X_train,
-        y_train,
+    print("Calibrating baseline probabilities...")
+    calibrated_model = CalibratedClassifierCV(
+        estimator=base_pipeline,
+        method="sigmoid",
+        cv="prefit",
     )
-
+    calibrated_model.fit(X_val, y_val)
 
     # -----------------------------------------
     # Validation
     # -----------------------------------------
-
-    val_predictions = model.predict(X_val)
-
-    val_metrics = calculate_metrics(
-        y_val,
-        val_predictions,
-    )
+    val_predictions = calibrated_model.predict(X_val)
+    val_metrics = calculate_metrics(y_val, val_predictions)
 
     print("\nValidation metrics")
-
     for key, value in val_metrics.items():
         print(f"{key}: {value:.4f}")
 
-
     # -----------------------------------------
-    # Save model
+    # Save model & metadata
     # -----------------------------------------
+    model_path = ARTIFACT_DIR / "baseline.joblib"
+    joblib.dump(calibrated_model, model_path)
 
-    model_path = (
-        ARTIFACT_DIR
-        / "baseline.joblib"
-    )
+    model_sha256 = calculate_file_sha256(model_path)
+    dataset_sha256 = calculate_file_sha256(DATA_PATH)
 
-    joblib.dump(
-        model,
-        model_path,
-    )
+    try:
+        git_commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=ROOT_DIR,
+            text=True,
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        git_commit = None
 
     metadata = {
-    "python_version": platform.python_version(),
-    "scikit_learn_version": sklearn.__version__,
+        "model_backend": "baseline",
+        "python_version": platform.python_version(),
+        "scikit_learn_version": sklearn.__version__,
+        "dataset_sha256": dataset_sha256,
+        "model_sha256": model_sha256,
+        "training_timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "git_commit": git_commit,
+        "random_seed": 42,
+        "hyperparameters": {
+            "ngram_range": [1, 2],
+            "min_df": 2,
+            "max_df": 0.98,
+            "max_features": 100000,
+            "max_iter": 2000,
+            "class_weight": "balanced",
+            "calibration_method": "sigmoid (prefit on val)",
+        },
+        "val_metrics": val_metrics,
     }
 
     with open(
@@ -117,32 +128,22 @@ def main():
         "w",
         encoding="utf-8",
     ) as f:
-        json.dump(
-            metadata,
-            f,
-            indent=4,
-        )
+        json.dump(metadata, f, indent=4)
 
-    print(
-        f"\nModel saved to {model_path}"
-    )
-
+    print(f"\nModel saved to {model_path} (SHA-256: {model_sha256[:12]}...)")
 
     # -----------------------------------------
     # Save metrics
     # -----------------------------------------
+    with open(METRICS_DIR / "baseline_val_metrics.json", "w", encoding="utf-8") as f:
+        json.dump(val_metrics, f, indent=4)
 
-    with open(
-        METRICS_DIR / "baseline_val_metrics.json",
-        "w",
-    ) as f:
+    return calibrated_model, val_metrics
 
-        json.dump(
-            val_metrics,
-            f,
-            indent=4,
-        )
+
+def main():
+    train_baseline()
 
 
 if __name__ == "__main__":
-    main()
+    main()

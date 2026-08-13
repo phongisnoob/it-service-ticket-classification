@@ -1,0 +1,8 @@
+# GPU/CUDA environment: install with
+#   pip install -r requirements-cuda.txt --extra-index-url https://download.pytorch.org/whl/cu126
+#
+# This overrides the CPU-only torch from requirements.txt
+# with the CUDA 12.6 build.
+
+-r requirements.txt
+torch==2.13.0+cu126

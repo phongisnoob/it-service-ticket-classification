@@ -1,8 +1,18 @@
 {
-    "threshold": 0.4,
+    "threshold": 0.39,
     "target_accuracy": 0.9,
-    "model_sha256": "3f468e4bd27598d21afa3ac9624928015ddb4e35cf8b1105da37c3d865b5576c",
-    "validation_coverage": 0.8612040133779264,
-    "validation_auto_routed_accuracy": 0.9042071197411004,
-    "validation_manual_review_rate": 0.1387959866220736
+    "model_sha256": "86813f82a3ce581686fb42628d26f1180a85f6c0a603228bc52c94166411ad94",
+    "validation_coverage": 0.8734671125975474,
+    "validation_auto_routed_accuracy": 0.9014039566049776,
+    "validation_manual_review_rate": 0.1265328874024526,
+    "bootstrap_ci_95": {
+        "auto_routed_accuracy": [
+            0.894191047279054,
+            0.9086866980069511
+        ],
+        "coverage": [
+            0.8659420289855072,
+            0.8808528428093646
+        ]
+    }
 }

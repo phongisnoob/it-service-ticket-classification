@@ -159,15 +159,20 @@ class BaselinePredictor:
             model_path,
         )
 
+        self.model_sha256 = calculate_sha256(
+            model_path
+        )
+
         self.model = joblib.load(
             model_path
         )
 
-        self.labels = (
-            self.model
-            .named_steps["classifier"]
-            .classes_
-        )
+        if hasattr(self.model, "classes_"):
+            self.labels = self.model.classes_
+        elif hasattr(self.model, "named_steps"):
+            self.labels = self.model.named_steps["classifier"].classes_
+        else:
+            raise AttributeError("Loaded model has no classes_ attribute")
 
 
     def predict(
@@ -285,6 +290,10 @@ class CNNPredictor:
         self.threshold = load_threshold(
             CNN_THRESHOLD_PATH,
             weights_path,
+        )
+
+        self.model_sha256 = calculate_sha256(
+            weights_path
         )
 
 
