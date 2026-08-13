@@ -1,0 +1,10 @@
+{
+    "threshold": 0.75,
+    "overall_test_accuracy": 0.8447603121516165,
+    "coverage": 0.8475473801560758,
+    "manual_review_rate": 0.1524526198439242,
+    "auto_routed_accuracy": 0.9057875698783295,
+    "total_tickets": 7176,
+    "auto_routed_tickets": 6082,
+    "manual_review_tickets": 1094
+}

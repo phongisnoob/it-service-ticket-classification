@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+.venv/
+
+# Pytest
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# Dataset
+data/raw/*.csv
+
+# Model binaries
+artifacts/*.joblib
+artifacts/**/*.pt
+
+# OS
+.DS_Store
+Thumbs.db

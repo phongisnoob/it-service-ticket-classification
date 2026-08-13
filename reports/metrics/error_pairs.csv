@@ -1,0 +1,56 @@
+true_label,predicted_label,count
+HR Support,Hardware,126
+Hardware,Miscellaneous,105
+Hardware,HR Support,89
+HR Support,Miscellaneous,84
+Access,Hardware,72
+Miscellaneous,Hardware,67
+Hardware,Administrative rights,54
+Miscellaneous,HR Support,53
+Access,HR Support,41
+Administrative rights,Hardware,40
+Hardware,Access,37
+Access,Miscellaneous,34
+Storage,Hardware,28
+Hardware,Purchase,22
+Purchase,Hardware,20
+HR Support,Access,17
+Hardware,Internal Project,15
+Storage,HR Support,15
+Hardware,Storage,15
+HR Support,Internal Project,14
+Miscellaneous,Internal Project,14
+Miscellaneous,Access,12
+Internal Project,HR Support,11
+Internal Project,Miscellaneous,11
+Internal Project,Hardware,10
+Access,Storage,8
+Access,Internal Project,8
+HR Support,Storage,7
+HR Support,Administrative rights,6
+Storage,Miscellaneous,6
+Miscellaneous,Administrative rights,6
+Administrative rights,Miscellaneous,6
+Purchase,HR Support,5
+Miscellaneous,Purchase,5
+HR Support,Purchase,5
+Access,Administrative rights,5
+Administrative rights,HR Support,4
+Miscellaneous,Storage,4
+Purchase,Administrative rights,4
+Purchase,Miscellaneous,4
+Administrative rights,Internal Project,3
+Purchase,Internal Project,3
+Administrative rights,Purchase,3
+Storage,Administrative rights,2
+Storage,Access,2
+Access,Purchase,2
+Internal Project,Access,2
+Administrative rights,Access,1
+Administrative rights,Storage,1
+Internal Project,Administrative rights,1
+Internal Project,Storage,1
+Internal Project,Purchase,1
+Purchase,Storage,1
+Storage,Internal Project,1
+Storage,Purchase,1

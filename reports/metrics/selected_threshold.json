@@ -1,0 +1,7 @@
+{
+    "threshold": 0.75,
+    "target_accuracy": 0.9,
+    "validation_coverage": 0.8409977703455964,
+    "validation_auto_routed_accuracy": 0.907870753935377,
+    "validation_manual_review_rate": 0.15900222965440358
+}
