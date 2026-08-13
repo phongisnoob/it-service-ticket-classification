@@ -26,7 +26,7 @@ The production model is intentionally the simpler one: Logistic Regression sligh
 
 ![Model performance comparison](reports/figures/model_comparison.png)
 
-The TF-IDF + Logistic Regression model was selected for production because it achieved the best overall performance with lower serving complexity.
+Logistic Regression was selected using validation-set routing coverage, subject to at least 90% accuracy on automatically routed tickets. The selected model was then evaluated on the held-out test set.
 
 ### Confidence-based routing
 

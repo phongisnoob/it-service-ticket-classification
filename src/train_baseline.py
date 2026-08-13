@@ -28,7 +28,7 @@ def main():
 
     df = load_data()
 
-    train_df, val_df, test_df = split_data(df)
+    train_df, val_df, _ = split_data(df)
 
     X_train = train_df["Document"]
     y_train = train_df["Topic_group"]
@@ -36,8 +36,6 @@ def main():
     X_val = val_df["Document"]
     y_val = val_df["Topic_group"]
 
-    X_test = test_df["Document"]
-    y_test = test_df["Topic_group"]
 
 
     # -----------------------------------------
@@ -95,30 +93,6 @@ def main():
 
 
     # -----------------------------------------
-    # Test
-    # -----------------------------------------
-
-    test_predictions = model.predict(X_test)
-
-    test_metrics = calculate_metrics(
-        y_test,
-        test_predictions,
-    )
-
-    print("\nTest metrics")
-
-    for key, value in test_metrics.items():
-        print(f"{key}: {value:.4f}")
-
-    print("\nClassification report")
-
-    print_report(
-        y_test,
-        test_predictions,
-    )
-
-
-    # -----------------------------------------
     # Save model
     # -----------------------------------------
 
@@ -142,12 +116,12 @@ def main():
     # -----------------------------------------
 
     with open(
-        METRICS_DIR / "baseline_metrics.json",
+        METRICS_DIR / "baseline_val_metrics.json",
         "w",
     ) as f:
 
         json.dump(
-            test_metrics,
+            val_metrics,
             f,
             indent=4,
         )

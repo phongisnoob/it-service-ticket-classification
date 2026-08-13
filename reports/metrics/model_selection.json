@@ -1,0 +1,21 @@
+{
+    "selection_dataset": "validation",
+    "selection_rule": "Highest coverage with at least 90% auto-routed accuracy; Macro F1 as tie-breaker",
+    "selected_backend": "baseline",
+    "candidates": [
+        {
+            "backend": "baseline",
+            "validation_accuracy": 0.8559085841694537,
+            "validation_macro_f1": 0.8577881664674766,
+            "validation_coverage": 0.8612040133779264,
+            "validation_auto_routed_accuracy": 0.9042071197411004
+        },
+        {
+            "backend": "cnn",
+            "validation_accuracy": 0.8447603121516165,
+            "validation_macro_f1": 0.8473684209688004,
+            "validation_coverage": 0.8492196209587514,
+            "validation_auto_routed_accuracy": 0.9021988841483426
+        }
+    ]
+}
