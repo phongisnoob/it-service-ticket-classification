@@ -11,6 +11,13 @@ from src.textcnn import TextCNN
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
+MODEL_SELECTION_PATH = (
+    ROOT_DIR
+    / "reports"
+    / "metrics"
+    / "model_selection.json"
+)
+
 ARTIFACT_DIR = (
     ROOT_DIR
     / "artifacts"
@@ -30,7 +37,33 @@ CNN_THRESHOLD_PATH = (
     / "metrics"
     / "selected_threshold.json"
 )
+def get_selected_backend() -> str:
+    if not MODEL_SELECTION_PATH.exists():
+        raise FileNotFoundError(
+            "model_selection.json not found. "
+            "Run python -m src.select_model first."
+        )
 
+    with open(
+        MODEL_SELECTION_PATH,
+        encoding="utf-8",
+    ) as file:
+        selection = json.load(file)
+
+    backend = selection.get(
+        "selected_backend"
+    )
+
+    if backend not in {
+        "baseline",
+        "cnn",
+    }:
+        raise RuntimeError(
+            "Invalid selected_backend in "
+            "model_selection.json."
+        )
+
+    return backend
 
 def calculate_sha256(path):
     hasher = hashlib.sha256()
@@ -154,6 +187,8 @@ class BaselinePredictor:
             / "baseline.joblib"
         )
 
+        self.backend = "baseline"
+
         self.threshold = load_threshold(
             BASELINE_THRESHOLD_PATH,
             model_path,
@@ -202,6 +237,8 @@ class CNNPredictor:
             ARTIFACT_DIR
             / "cnn"
         )
+
+        self.backend = "cnn"
 
         weights_path = (
             cnn_dir
@@ -334,19 +371,17 @@ class CNNPredictor:
 # Factory
 
 def get_predictor(
-    backend="baseline",
-):
+        backend="auto",
+    ):
+        if backend == "auto":
+            backend = get_selected_backend()
 
-    if backend == "baseline":
+        if backend == "baseline":
+            return BaselinePredictor()
 
-        return BaselinePredictor()
+        if backend == "cnn":
+            return CNNPredictor()
 
-
-    if backend == "cnn":
-
-        return CNNPredictor()
-
-
-    raise ValueError(
-        f"Unknown backend: {backend}"
-    )
+        raise ValueError(
+            f"Unknown backend: {backend}"
+        )

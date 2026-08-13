@@ -59,19 +59,18 @@ def train_baseline():
         ),
     ])
 
-    print("Training baseline pipeline...")
-    base_pipeline.fit(X_train, y_train)
 
     # -----------------------------------------
     # Calibration Stage
     # -----------------------------------------
-    print("Calibrating baseline probabilities...")
+    print("Training and calibrating baseline with 5-fold CV...")
     calibrated_model = CalibratedClassifierCV(
         estimator=base_pipeline,
         method="sigmoid",
-        cv="prefit",
+        cv=5,
+        n_jobs=-1,
     )
-    calibrated_model.fit(X_val, y_val)
+    calibrated_model.fit(X_train, y_train)
 
     # -----------------------------------------
     # Validation
@@ -117,7 +116,7 @@ def train_baseline():
             "max_features": 100000,
             "max_iter": 2000,
             "class_weight": "balanced",
-            "calibration_method": "sigmoid (prefit on val)",
+            "calibration_method": "sigmoid (5-fold CV on training set)",
         },
         "val_metrics": val_metrics,
     }
@@ -145,4 +144,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main()

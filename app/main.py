@@ -17,7 +17,10 @@ from src.inference import get_predictor
 # Configuration
 # ============================================================
 
-MODEL_BACKEND = os.getenv("MODEL_BACKEND", "baseline")
+MODEL_BACKEND = os.getenv(
+    "MODEL_BACKEND",
+    "auto",
+)
 
 
 # ============================================================
@@ -97,7 +100,11 @@ def health():
     predictor = app.state.predictor
     return {
         "status": "ok",
-        "model_backend": MODEL_BACKEND,
+        "model_backend": getattr(
+            predictor,
+            "backend",
+            MODEL_BACKEND,
+        ),
         "model_sha256": getattr(predictor, "model_sha256", None),
         "threshold": getattr(predictor, "threshold", None),
     }
