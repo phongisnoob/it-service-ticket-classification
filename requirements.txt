@@ -8,4 +8,4 @@ fastapi
 uvicorn
 pydantic
 pytest
-httpx
+httpx2
