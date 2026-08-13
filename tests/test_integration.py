@@ -1,8 +1,3 @@
-import typing
-from typing import Any
-
-from src.paths import BASELINE_MODEL_PATH, ROOT_DIR
-
 """Integration tests for the real ML serving stack.
 
 These tests load actual model artifacts and verify that the full
@@ -10,8 +5,10 @@ inference pipeline works end-to-end. They require trained model
 files to be present (not run in CI).
 """
 
-import typing
 import json
+import typing
+from typing import Any
+
 import pytest
 
 from src.inference import (
@@ -20,6 +17,7 @@ from src.inference import (
     get_predictor,
     load_threshold,
 )
+from src.paths import BASELINE_MODEL_PATH, ROOT_DIR
 
 BASELINE_THRESHOLD_PATH_LOCAL = (
     ROOT_DIR / "reports" / "metrics" / "baseline_selected_threshold.json"

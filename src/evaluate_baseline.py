@@ -10,7 +10,7 @@ from src.evaluate import (
     calculate_metrics,
     print_report,
 )
-from src.paths import ARTIFACT_DIR
+from src.paths import ARTIFACT_DIR, METRICS_DIR
 
 MODEL_PATH = ARTIFACT_DIR / "baseline.joblib"
 
