@@ -244,4 +244,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
->>>>>>> cce76e94b4a305af2302c27973f94b65a55aa672
+
+# Prediction files may contain ticket text
+reports/metrics/*_predictions.csv
+reports/metrics/high_confidence_errors.csv
+reports/private/

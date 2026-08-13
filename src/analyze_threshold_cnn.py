@@ -15,25 +15,25 @@ METRICS_DIR = (
 
 INPUT_PATH = (
     METRICS_DIR
-    / "baseline_val_predictions.csv"
+    / "cnn_val_predictions.csv"
 )
 
 OUTPUT_PATH = (
     METRICS_DIR
-    / "baseline_threshold_analysis.csv"
+    / "threshold_analysis.csv"
 )
 
 THRESHOLD_PATH = (
     METRICS_DIR
-    / "baseline_selected_threshold.json"
+    / "selected_threshold.json"
 )
 
 MODEL_PATH = (
     ROOT_DIR
     / "artifacts"
-    / "baseline.joblib"
+    / "cnn"
+    / "textcnn.pt"
 )
-
 
 def calculate_sha256(path):
     hasher = hashlib.sha256()

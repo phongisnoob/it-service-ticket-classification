@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-
+import hashlib
 import joblib
 import numpy as np
 import torch
@@ -37,33 +37,68 @@ CNN_THRESHOLD_PATH = (
     / "selected_threshold.json"
 )
 
-def load_cnn_threshold():
+
+def calculate_sha256(path):
+    hasher = hashlib.sha256()
+
+    with open(path, "rb") as file:
+        for chunk in iter(
+            lambda: file.read(1024 * 1024),
+            b"",
+        ):
+            hasher.update(chunk)
+
+    return hasher.hexdigest()
+
+
+def load_threshold(
+    threshold_path,
+    model_path,
+):
+    if not model_path.exists():
+        raise FileNotFoundError(
+            f"Model artifact not found: {model_path}"
+        )
 
     with open(
-        THRESHOLD_PATH,
+        threshold_path,
         "r",
         encoding="utf-8",
-    ) as f:
+    ) as file:
+        config = json.load(file)
 
-        config = json.load(f)
+    expected_hash = config.get(
+        "model_sha256"
+    )
 
-    return float(
+    if not expected_hash:
+        raise RuntimeError(
+            "Threshold config does not contain "
+            "a model SHA-256 hash. "
+            "Run threshold selection again."
+        )
+
+    actual_hash = calculate_sha256(
+        model_path
+    )
+
+    if actual_hash != expected_hash:
+        raise RuntimeError(
+            "The model and threshold were generated "
+            "from different model versions. "
+            "Run threshold selection again."
+        )
+
+    threshold = float(
         config["threshold"]
     )
 
-def load_threshold(path):
+    if not 0 <= threshold <= 1:
+        raise ValueError(
+            "Threshold must be between 0 and 1."
+        )
 
-    with open(
-        path,
-        "r",
-        encoding="utf-8",
-    ) as f:
-
-        config = json.load(f)
-
-    return float(
-        config["threshold"]
-    )
+    return threshold
 
 def format_prediction(
     labels,
@@ -114,7 +149,7 @@ def format_prediction(
 
 
 # Logistic Regression
-
+    
 
 class BaselinePredictor:
 
@@ -125,6 +160,11 @@ class BaselinePredictor:
             / "baseline.joblib"
         )
 
+        self.threshold = load_threshold(
+            BASELINE_THRESHOLD_PATH,
+            model_path,
+        )
+
         self.model = joblib.load(
             model_path
         )
@@ -133,10 +173,6 @@ class BaselinePredictor:
             self.model
             .named_steps["classifier"]
             .classes_
-        )
-
-        self.threshold = load_threshold(
-            BASELINE_THRESHOLD_PATH
         )
 
 
@@ -162,12 +198,16 @@ class BaselinePredictor:
 class CNNPredictor:
 
     def __init__(self):
-
+        
         cnn_dir = (
             ARTIFACT_DIR
             / "cnn"
         )
 
+        weights_path = (
+            cnn_dir
+            / "textcnn.pt"
+        )
         with open(
             cnn_dir / "vocab.json",
             encoding="utf-8",
@@ -232,7 +272,7 @@ class CNNPredictor:
 
 
         state_dict = torch.load(
-            cnn_dir / "textcnn.pt",
+            weights_path,
             map_location=self.device,
             weights_only=True,
         )
@@ -249,7 +289,8 @@ class CNNPredictor:
         self.model.eval()
 
         self.threshold = load_threshold(
-            CNN_THRESHOLD_PATH
+            CNN_THRESHOLD_PATH,
+            weights_path,
         )
 
 

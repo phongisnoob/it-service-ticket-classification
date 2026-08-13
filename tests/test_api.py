@@ -2,14 +2,43 @@ import pytest
 
 from fastapi.testclient import TestClient
 
-from app.main import app
-
+from app import main as api
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
 
-    with TestClient(app) as client:
+    monkeypatch.setattr(
+        api,
+        "get_predictor",
+        lambda backend: FakePredictor(),
+    )
+
+    with TestClient(api.app) as client:
         yield client
+
+class FakePredictor:
+
+    def predict(self, text: str):
+        return {
+            "category": "Access",
+            "confidence": 0.95,
+            "threshold": 0.40,
+            "needs_manual_review": False,
+            "top_3": [
+                {
+                    "category": "Access",
+                    "probability": 0.95,
+                },
+                {
+                    "category": "Hardware",
+                    "probability": 0.03,
+                },
+                {
+                    "category": "Storage",
+                    "probability": 0.02,
+                },
+            ],
+        }
 
 
 def test_root(client):
