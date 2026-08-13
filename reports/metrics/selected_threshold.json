@@ -1,8 +1,8 @@
 {
-    "threshold": 0.75,
+    "threshold": 0.8,
     "target_accuracy": 0.9,
-    "model_sha256": "59740c301450569cb045149b460b303b997dee8c7964ff2d2a2952a98c985bd4",
-    "validation_coverage": 0.8409977703455964,
-    "validation_auto_routed_accuracy": 0.907870753935377,
-    "validation_manual_review_rate": 0.15900222965440358
+    "model_sha256": "1be0781048e5ea177004fd406794fa34c666f1bac7b90dfd19261ac0976b755e",
+    "validation_coverage": 0.8492196209587514,
+    "validation_auto_routed_accuracy": 0.9021988841483426,
+    "validation_manual_review_rate": 0.15078037904124864
 }
