@@ -1,8 +1,8 @@
 import datetime
 import json
-from pathlib import Path
 import platform
 import subprocess
+from pathlib import Path
 
 import joblib
 import sklearn
@@ -13,7 +13,6 @@ from sklearn.pipeline import Pipeline
 
 from src.data import DATA_PATH, calculate_file_sha256, load_data, split_data
 from src.evaluate import calculate_metrics
-
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 

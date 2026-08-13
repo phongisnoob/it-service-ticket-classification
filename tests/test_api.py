@@ -1,8 +1,8 @@
 import pytest
-
 from fastapi.testclient import TestClient
 
 from app import main as api
+
 
 @pytest.fixture
 def client(monkeypatch):

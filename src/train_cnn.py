@@ -1,20 +1,19 @@
 import datetime
 import json
-import random
-from pathlib import Path
 import platform
+import random
 import subprocess
+from pathlib import Path
 
 import numpy as np
+import torch
 from sklearn.metrics import f1_score
 from sklearn.preprocessing import LabelEncoder
-import torch
 from torch.utils.data import DataLoader
 
 from src.cnn_data import TicketDataset, build_vocab
 from src.data import DATA_PATH, calculate_file_sha256, load_data, split_data
 from src.textcnn import TextCNN
-
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 ARTIFACT_DIR = ROOT_DIR / "artifacts" / "cnn"

@@ -2,7 +2,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
 METRICS_DIR = (
@@ -17,17 +16,17 @@ def main():
         METRICS_DIR
         / "cnn_test_predictions.csv"
     )
-    
-    
+
+
     errors = results[
-        results["correct"] == False
+        not results["correct"]
     ].copy()
-    
-    
+
+
     # ============================================================
     # Most common confusion pairs
     # ============================================================
-    
+
     confusions = (
         errors
         .groupby(
@@ -45,18 +44,18 @@ def main():
             ascending=False,
         )
     )
-    
-    
+
+
     confusions.to_csv(
         METRICS_DIR
         / "error_pairs.csv",
         index=False,
     )
-    
-    
+
+
     print("\nMost Common Errors")
     print("=" * 70)
-    
+
     print(
         confusions
         .head(15)
@@ -64,12 +63,12 @@ def main():
             index=False
         )
     )
-    
-    
+
+
     # ============================================================
     # High-confidence errors
     # ============================================================
-    
+
     high_confidence_errors = (
         errors[
             errors["confidence"]
@@ -80,15 +79,15 @@ def main():
             ascending=False,
         )
     )
-    
-    
+
+
     high_confidence_errors.to_csv(
         METRICS_DIR
         / "high_confidence_errors.csv",
         index=False,
     )
-    
-    
+
+
     print(
         "\nHigh-confidence errors:",
         len(high_confidence_errors),

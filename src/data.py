@@ -1,11 +1,10 @@
 import hashlib
 import json
-from pathlib import Path
 import re
+from pathlib import Path
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
-
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
@@ -104,7 +103,7 @@ def split_data(
     persist_manifest=True,
 ):
     """Split dataset into train, validation, and test sets.
-    
+
     If use_persisted is True and persisted ID files exist, loads the persisted splits.
     Otherwise performs stratified splitting and optionally persists the manifest.
     """

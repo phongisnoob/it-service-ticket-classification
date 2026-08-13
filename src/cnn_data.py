@@ -3,7 +3,6 @@ from collections import Counter
 import torch
 from torch.utils.data import Dataset
 
-
 PAD_TOKEN = "<PAD>"
 UNK_TOKEN = "<UNK>"
 

@@ -1,25 +1,19 @@
 import json
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
-
-import torch
-
 import matplotlib.pyplot as plt
-
+import pandas as pd
+import torch
 from sklearn.metrics import (
-    classification_report,
     ConfusionMatrixDisplay,
+    classification_report,
 )
-
 from torch.utils.data import DataLoader
 
+from src.cnn_data import TicketDataset
 from src.data import load_data, split_data
 from src.evaluate import calculate_metrics
-from src.cnn_data import TicketDataset
 from src.textcnn import TextCNN
-
 
 # ============================================================
 # Paths

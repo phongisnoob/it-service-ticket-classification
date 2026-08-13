@@ -3,7 +3,7 @@ import numpy as np
 
 def compute_bootstrap_ci(results_df, threshold, n_bootstraps=1000, ci=0.95, seed=42):
     """Compute bootstrap confidence intervals for routing accuracy and coverage.
-    
+
     Parameters
     ----------
     results_df : pd.DataFrame
@@ -16,7 +16,7 @@ def compute_bootstrap_ci(results_df, threshold, n_bootstraps=1000, ci=0.95, seed
         Confidence interval level (e.g. 0.95 for 95% CI).
     seed : int
         Random seed for reproducibility.
-    
+
     Returns
     -------
     tuple[list[float], list[float]]

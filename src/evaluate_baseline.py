@@ -12,7 +12,6 @@ from src.evaluate import (
     print_report,
 )
 
-
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
 MODEL_PATH = (

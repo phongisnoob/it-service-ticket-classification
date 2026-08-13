@@ -3,14 +3,12 @@ from pathlib import Path
 
 import pandas as pd
 import torch
-
-from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import DataLoader
 
-from src.data import load_data, split_data
 from src.cnn_data import TicketDataset
-from src.textcnn import TextCNN
+from src.data import load_data, split_data
 from src.evaluate import calculate_metrics
+from src.textcnn import TextCNN
 
 # ============================================================
 # Paths

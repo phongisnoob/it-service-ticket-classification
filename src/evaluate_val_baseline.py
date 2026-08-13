@@ -7,7 +7,6 @@ import pandas as pd
 from src.data import load_data, split_data
 from src.evaluate import calculate_calibration_metrics
 
-
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
 MODEL_PATH = ROOT_DIR / "artifacts" / "baseline.joblib"

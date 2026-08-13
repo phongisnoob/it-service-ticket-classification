@@ -2,12 +2,10 @@ import json
 from pathlib import Path
 
 import pandas as pd
-
 from sklearn.metrics import (
     accuracy_score,
     f1_score,
 )
-
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 

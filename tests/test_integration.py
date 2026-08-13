@@ -6,20 +6,16 @@ files to be present (not run in CI).
 """
 
 import json
-import tempfile
 from pathlib import Path
 
 import pytest
 
 from src.inference import (
     BaselinePredictor,
+    calculate_sha256,
     get_predictor,
     load_threshold,
-    calculate_sha256,
-    BASELINE_THRESHOLD_PATH,
-    ARTIFACT_DIR,
 )
-
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 BASELINE_MODEL_PATH = ROOT_DIR / "artifacts" / "baseline.joblib"

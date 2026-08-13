@@ -7,7 +7,6 @@ import pandas as pd
 
 from src.routing_utils import compute_bootstrap_ci
 
-
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
 METRICS_DIR = ROOT_DIR / "reports" / "metrics"
