@@ -110,7 +110,7 @@ def main():
         print(f"{key}: {value:.4f}")
 
     print("\nCalibration Quality:")
-    print(f"Brier score: {calib_metrics['brier_score']:.6f}")
+    print(f"Brier score: {calib_metrics['top_label_brier_score']:.6f}")
     print(f"Expected Calibration Error (ECE): {calib_metrics['expected_calibration_error']:.6f}")
 
     results = pd.DataFrame({

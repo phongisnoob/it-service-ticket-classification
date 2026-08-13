@@ -104,6 +104,6 @@ def calculate_calibration_metrics(y_true_labels, y_pred_labels, y_confidence, n_
         ece += (bin_size / total) * abs(bin_accuracy - bin_confidence)
 
     return {
-        "brier_score": round(brier, 6),
+        "top_label_brier_score": round(brier, 6),
         "expected_calibration_error": round(float(ece), 6),
     }

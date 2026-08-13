@@ -90,6 +90,16 @@ def load_data(
     )
 
     if deduplicate:
+        conflicts = df.groupby("document_normalized")["Topic_group"].nunique()
+        conflicting_docs = conflicts[conflicts > 1].index
+
+        if len(conflicting_docs) > 0:
+            conflicting_df = df[df["document_normalized"].isin(conflicting_docs)]
+            REPORT_DATA_DIR.mkdir(parents=True, exist_ok=True)
+            conflicting_df.to_csv(REPORT_DATA_DIR / "conflicting_duplicate_labels.csv")
+
+            df = df[~df["document_normalized"].isin(conflicting_docs)].copy()
+
         df = df.drop_duplicates(
             subset=["document_normalized"],
             keep="first",

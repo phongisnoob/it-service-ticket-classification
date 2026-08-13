@@ -240,15 +240,25 @@ class CNNPredictor:
 
         self.backend = "cnn"
 
-        weights_path = (
-            cnn_dir
-            / "textcnn.pt"
-        )
-        with open(
-            cnn_dir / "vocab.json",
-            encoding="utf-8",
-        ) as f:
+        weights_path = cnn_dir / "textcnn.pt"
+        vocab_path = cnn_dir / "vocab.json"
+        manifest_path = cnn_dir / "artifact_manifest.json"
 
+        if not manifest_path.exists():
+            raise FileNotFoundError("CNN artifact_manifest.json is missing.")
+
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+
+        for filename, expected_hash in manifest.items():
+            filepath = cnn_dir / filename
+            if not filepath.exists():
+                raise FileNotFoundError(f"Missing CNN artifact: {filename}")
+            actual_hash = calculate_sha256(filepath)
+            if actual_hash != expected_hash:
+                raise RuntimeError(f"Hash mismatch for CNN artifact {filename}. Expected {expected_hash}, got {actual_hash}.")
+
+        with open(vocab_path, encoding="utf-8") as f:
             self.vocab = json.load(f)
 
 

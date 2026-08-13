@@ -25,5 +25,5 @@ jobs:
       - name: Lint with ruff
         run: ruff check .
 
-      - name: Run API tests
-        run: pytest tests/test_api.py -v
+      - name: Run tests
+        run: python -m pytest -v

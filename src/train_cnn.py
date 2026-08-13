@@ -24,7 +24,6 @@ ARTIFACT_DIR.mkdir(
 )
 
 SEED = 42
-MAX_LENGTH = 100
 MAX_VOCAB_SIZE = 30000
 MIN_FREQ = 2
 
@@ -45,6 +44,9 @@ def set_seed(seed):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+    torch.use_deterministic_algorithms(True, warn_only=True)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 def train_cnn():
@@ -72,23 +74,38 @@ def train_cnn():
     )
     print("Vocabulary size:", len(vocab))
 
+    # Calculate token length statistics
+    token_lengths = train_df["Document"].apply(lambda x: len(str(x).split()))
+    p50 = float(np.percentile(token_lengths, 50))
+    p90 = float(np.percentile(token_lengths, 90))
+    p95 = float(np.percentile(token_lengths, 95))
+    p99 = float(np.percentile(token_lengths, 99))
+
+    max_length = int(p95)
+    training_truncation_rate = float((token_lengths > max_length).mean())
+    print(f"Selected max_length: {max_length} (P95)")
+
     train_dataset = TicketDataset(
         texts=train_df["Document"],
         labels=y_train,
         vocab=vocab,
-        max_length=MAX_LENGTH,
+        max_length=max_length,
     )
     val_dataset = TicketDataset(
         texts=val_df["Document"],
         labels=y_val,
         vocab=vocab,
-        max_length=MAX_LENGTH,
+        max_length=max_length,
     )
+
+    g = torch.Generator()
+    g.manual_seed(SEED)
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=BATCH_SIZE,
         shuffle=True,
+        generator=g,
     )
     val_loader = DataLoader(
         val_dataset,
@@ -154,12 +171,18 @@ def train_cnn():
         json.dump(label_encoder.classes_.tolist(), f, ensure_ascii=False, indent=2)
 
     config = {
-        "max_length": MAX_LENGTH,
+        "max_length": max_length,
         "embedding_dim": EMBEDDING_DIM,
         "num_filters": NUM_FILTERS,
         "kernel_sizes": KERNEL_SIZES,
         "dropout": DROPOUT,
         "num_classes": num_classes,
+        "selected_max_length": max_length,
+        "training_truncation_rate": training_truncation_rate,
+        "p50": p50,
+        "p90": p90,
+        "p95": p95,
+        "p99": p99
     }
 
     with open(ARTIFACT_DIR / "config.json", "w", encoding="utf-8") as f:
@@ -217,6 +240,18 @@ def train_cnn():
 
     with open(ARTIFACT_DIR / "cnn_metadata.json", "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=4)
+
+    # -----------------------------------------
+    # Generate complete artifact manifest
+    # -----------------------------------------
+    manifest = {
+        "textcnn.pt": calculate_file_sha256(ARTIFACT_DIR / "textcnn.pt"),
+        "vocab.json": calculate_file_sha256(ARTIFACT_DIR / "vocab.json"),
+        "labels.json": calculate_file_sha256(ARTIFACT_DIR / "labels.json"),
+        "config.json": calculate_file_sha256(ARTIFACT_DIR / "config.json"),
+    }
+    with open(ARTIFACT_DIR / "artifact_manifest.json", "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=4)
 
     print("\nBest validation Macro-F1:", round(best_val_f1, 4))
     print(f"Best model saved to {model_path} (SHA-256: {model_sha256[:12]}...)")

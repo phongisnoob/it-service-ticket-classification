@@ -50,7 +50,7 @@ def main():
         json.dump(calibration, f, indent=4)
 
     print("Validation accuracy:", results["correct"].mean())
-    print("Brier score:", calibration["brier_score"])
+    print("Top label Brier score:", calibration["top_label_brier_score"])
     print("ECE:", calibration["expected_calibration_error"])
     print("Saved to:", output_path)
     print("Saved calibration metrics to:", calibration_path)

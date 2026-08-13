@@ -3,5 +3,7 @@
     "macro_precision": 0.8483223901189063,
     "macro_recall": 0.8530357418559904,
     "macro_f1": 0.8501222406571417,
-    "weighted_f1": 0.849351993136123
+    "weighted_f1": 0.849351993136123,
+    "top_label_brier_score": 0.107082,
+    "expected_calibration_error": 0.062794
 }

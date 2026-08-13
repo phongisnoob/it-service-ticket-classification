@@ -68,7 +68,7 @@ def train_baseline():
         estimator=base_pipeline,
         method="sigmoid",
         cv=5,
-        n_jobs=-1,
+        n_jobs=1,
     )
     calibrated_model.fit(X_train, y_train)
 
