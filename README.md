@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # IT Service Ticket Classification & Confidence-Based Routing
 
 An end-to-end NLP project for classifying IT service desk tickets into eight support categories and routing low-confidence cases to human review. The project compares a classical **TF-IDF + Logistic Regression** pipeline with a **PyTorch TextCNN**, then serves the selected production model through FastAPI.
@@ -368,4 +368,4 @@ Maintained by the repository owner. If the project is published under an organiz
 =======
 # it-service-ticket-classification
 End-to-end NLP system for IT ticket classification with model benchmarking, confidence-based human escalation, and FastAPI serving.
-cce76e94b4a305af2302c27973f94b65a55aa672
+
