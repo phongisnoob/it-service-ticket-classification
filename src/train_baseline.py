@@ -1,3 +1,4 @@
+from typing import Any
 import datetime
 import json
 import platform
@@ -23,7 +24,7 @@ ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 METRICS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def train_baseline():
+def train_baseline() -> Any:
     # -----------------------------------------
     # Load and split data
     # -----------------------------------------
@@ -39,26 +40,27 @@ def train_baseline():
     # -----------------------------------------
     # Base Model Pipeline
     # -----------------------------------------
-    base_pipeline = Pipeline([
-        (
-            "tfidf",
-            TfidfVectorizer(
-                ngram_range=(1, 2),
-                min_df=2,
-                max_df=0.98,
-                sublinear_tf=True,
-                max_features=100_000,
+    base_pipeline = Pipeline(
+        [
+            (
+                "tfidf",
+                TfidfVectorizer(
+                    ngram_range=(1, 2),
+                    min_df=2,
+                    max_df=0.98,
+                    sublinear_tf=True,
+                    max_features=100_000,
+                ),
             ),
-        ),
-        (
-            "classifier",
-            LogisticRegression(
-                max_iter=2000,
-                class_weight="balanced",
+            (
+                "classifier",
+                LogisticRegression(
+                    max_iter=2000,
+                    class_weight="balanced",
+                ),
             ),
-        ),
-    ])
-
+        ]
+    )
 
     # -----------------------------------------
     # Calibration Stage
@@ -139,7 +141,7 @@ def train_baseline():
     return calibrated_model, val_metrics
 
 
-def main():
+def main() -> None:
     train_baseline()
 
 

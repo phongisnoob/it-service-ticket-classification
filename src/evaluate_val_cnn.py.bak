@@ -30,8 +30,7 @@ METRICS_DIR.mkdir(
 # Load vocabulary
 # ============================================================
 
-
-def main() -> None:
+def main():
     with open(CNN_DIR / "vocab.json", "r", encoding="utf-8") as f:
         vocab = json.load(f)
 
@@ -111,17 +110,15 @@ def main() -> None:
         print(f"{key}: {value:.4f}")
 
     print("\nCalibration Quality:")
-    print(f"Brier score: {calib_metrics['top_label_brier_score']:.6f}")
+    print(f"Brier score: {calib_metrics['brier_score']:.6f}")
     print(f"Expected Calibration Error (ECE): {calib_metrics['expected_calibration_error']:.6f}")
 
-    results = pd.DataFrame(
-        {
-            "ticket_id": val_df.index.to_numpy(),
-            "true_label": true_labels,
-            "predicted_label": predicted_labels,
-            "confidence": all_confidences,
-        }
-    )
+    results = pd.DataFrame({
+        "ticket_id": val_df.index.to_numpy(),
+        "true_label": true_labels,
+        "predicted_label": predicted_labels,
+        "confidence": all_confidences,
+    })
     results["correct"] = results["true_label"] == results["predicted_label"]
 
     output_path = METRICS_DIR / "cnn_val_predictions.csv"

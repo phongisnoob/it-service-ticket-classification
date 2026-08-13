@@ -9,30 +9,17 @@ import pandas as pd
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
-METRICS_DIR = (
-    ROOT_DIR
-    / "reports"
-    / "metrics"
-)
+METRICS_DIR = ROOT_DIR / "reports" / "metrics"
 
 
-TEST_PREDICTIONS_PATH = (
-    METRICS_DIR
-    / "cnn_test_predictions.csv"
-)
+TEST_PREDICTIONS_PATH = METRICS_DIR / "cnn_test_predictions.csv"
 
-THRESHOLD_PATH = (
-    METRICS_DIR
-    / "selected_threshold.json"
-)
+THRESHOLD_PATH = METRICS_DIR / "selected_threshold.json"
 
-OUTPUT_PATH = (
-    METRICS_DIR
-    / "routing_metrics.json"
-)
+OUTPUT_PATH = METRICS_DIR / "routing_metrics.json"
 
 
-def main():
+def main() -> None:
     if not TEST_PREDICTIONS_PATH.exists():
         raise FileNotFoundError(f"Test predictions not found: {TEST_PREDICTIONS_PATH}")
 
@@ -88,4 +75,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main()

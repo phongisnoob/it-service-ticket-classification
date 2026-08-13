@@ -1,3 +1,5 @@
+import typing
+from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
@@ -5,7 +7,7 @@ from app import main as api
 
 
 @pytest.fixture
-def client(monkeypatch):
+def client(monkeypatch: Any) -> typing.Any:
 
     monkeypatch.setattr(
         api,
@@ -16,12 +18,12 @@ def client(monkeypatch):
     with TestClient(api.app) as client:
         yield client
 
-class FakePredictor:
 
+class FakePredictor:
     threshold = 0.40
     model_sha256 = "fake_sha256_for_testing"
 
-    def predict(self, text: str):
+    def predict(self, text: str) -> Any:
         return {
             "category": "Access",
             "confidence": 0.95,
@@ -44,14 +46,14 @@ class FakePredictor:
         }
 
 
-def test_root(client):
+def test_root(client: Any) -> None:
 
     response = client.get("/")
 
     assert response.status_code == 200
 
 
-def test_health(client):
+def test_health(client: Any) -> None:
 
     response = client.get("/health")
 
@@ -68,14 +70,11 @@ def test_health(client):
     assert "threshold" in data
 
 
-def test_predict(client):
+def test_predict(client: Any) -> None:
 
     response = client.post(
         "/predict",
-        json={
-            "text":
-                "I cannot access the shared network folder"
-        },
+        json={"text": "I cannot access the shared network folder"},
     )
 
     assert response.status_code == 200
@@ -101,54 +100,33 @@ def test_predict(client):
         bool,
     )
 
-    assert len(
-        data["top_3"]
-    ) <= 3
+    assert len(data["top_3"]) <= 3
 
 
-def test_routing_logic(client):
+def test_routing_logic(client: Any) -> None:
 
     response = client.post(
         "/predict",
-        json={
-            "text":
-                "I need administrator access "
-                "to install an application"
-        },
+        json={"text": "I need administrator access to install an application"},
     )
 
     data = response.json()
 
-    expected_review = (
-        data["confidence"]
-        <
-        data["threshold"]
-    )
+    expected_review = data["confidence"] < data["threshold"]
 
-    assert (
-        data["needs_manual_review"]
-        ==
-        expected_review
-    )
+    assert data["needs_manual_review"] == expected_review
 
 
-def test_top3_sorted(client):
+def test_top3_sorted(client: Any) -> None:
 
     response = client.post(
         "/predict",
-        json={
-            "text":
-                "My laptop keyboard "
-                "is not working"
-        },
+        json={"text": "My laptop keyboard is not working"},
     )
 
     data = response.json()
 
-    probabilities = [
-        item["probability"]
-        for item in data["top_3"]
-    ]
+    probabilities = [item["probability"] for item in data["top_3"]]
 
     assert probabilities == sorted(
         probabilities,
@@ -156,13 +134,11 @@ def test_top3_sorted(client):
     )
 
 
-def test_empty_ticket(client):
+def test_empty_ticket(client: Any) -> None:
 
     response = client.post(
         "/predict",
-        json={
-            "text": ""
-        },
+        json={"text": ""},
     )
 
     assert response.status_code == 422

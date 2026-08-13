@@ -1,3 +1,4 @@
+from typing import Any
 import os
 import secrets
 import time
@@ -30,44 +31,29 @@ MODEL_BACKEND = os.getenv(
 # ============================================================
 
 HTTP_REQUESTS = Counter(
-    "http_requests_total",
-    "Total HTTP requests",
-    ["method", "endpoint", "status"]
+    "http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"]
 )
 
 HTTP_LATENCY = Histogram(
-    "http_request_duration_seconds",
-    "HTTP request latency",
-    ["method", "endpoint"]
+    "http_request_duration_seconds", "HTTP request latency", ["method", "endpoint"]
 )
 
-PREDICTION_REQUESTS = Counter(
-    "prediction_requests_total",
-    "Total prediction requests"
-)
+PREDICTION_REQUESTS = Counter("prediction_requests_total", "Total prediction requests")
 
-AUTO_ROUTE_COUNT = Counter(
-    "auto_route_total",
-    "Total auto-routed predictions"
-)
+AUTO_ROUTE_COUNT = Counter("auto_route_total", "Total auto-routed predictions")
 
-MANUAL_REVIEW_COUNT = Counter(
-    "manual_review_total",
-    "Total predictions needing manual review"
-)
+MANUAL_REVIEW_COUNT = Counter("manual_review_total", "Total predictions needing manual review")
 
-PREDICTION_CONFIDENCE = Histogram(
-    "prediction_confidence",
-    "Prediction confidence score"
-)
+PREDICTION_CONFIDENCE = Histogram("prediction_confidence", "Prediction confidence score")
 
 
 # ============================================================
 # Lifespan
 # ============================================================
 
+
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> Any:
     print(f"Loading model: {MODEL_BACKEND}")
     app.state.predictor = get_predictor(MODEL_BACKEND)
     yield
@@ -88,22 +74,18 @@ app = FastAPI(
 metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
 
+
 @app.middleware("http")
-async def monitor_requests(request: Request, call_next):
+async def monitor_requests(request: Request, call_next: Any) -> Any:
     start_time = time.time()
     response = await call_next(request)
     duration = time.time() - start_time
 
     if request.url.path != "/metrics":
         HTTP_REQUESTS.labels(
-            method=request.method,
-            endpoint=request.url.path,
-            status=response.status_code
+            method=request.method, endpoint=request.url.path, status=response.status_code
         ).inc()
-        HTTP_LATENCY.labels(
-            method=request.method,
-            endpoint=request.url.path
-        ).observe(duration)
+        HTTP_LATENCY.labels(method=request.method, endpoint=request.url.path).observe(duration)
 
     return response
 
@@ -111,6 +93,7 @@ async def monitor_requests(request: Request, call_next):
 # ============================================================
 # Schemas
 # ============================================================
+
 
 class TicketRequest(BaseModel):
     text: str = Field(
@@ -124,9 +107,7 @@ class TicketRequest(BaseModel):
     def validate_text(cls, value: str) -> str:
         value = value.strip()
         if len(value) < 3:
-            raise ValueError(
-                "Ticket text must contain at least 3 non-whitespace characters."
-            )
+            raise ValueError("Ticket text must contain at least 3 non-whitespace characters.")
         return value
 
 
@@ -147,8 +128,9 @@ class PredictionResponse(BaseModel):
 # Root
 # ============================================================
 
+
 @app.get("/")
-def root():
+def root() -> Any:
     return {"message": "IT Service Ticket Classifier"}
 
 
@@ -156,8 +138,9 @@ def root():
 # Health
 # ============================================================
 
+
 @app.get("/health")
-def health():
+def health() -> Any:
     predictor = app.state.predictor
     return {
         "status": "ok",
@@ -175,33 +158,26 @@ def health():
 # Prediction
 # ============================================================
 
-API_KEY = os.getenv(
-    "API_KEY"
-)
+API_KEY = os.getenv("API_KEY")
 
 
 def require_api_key(
-    x_api_key: str | None = Header(
-        default=None
-    ),
-):
+    x_api_key: str | None = Header(default=None),
+) -> Any:
     # Local/demo mode:
     # no API_KEY environment variable means no auth.
     if API_KEY is None:
         return
 
-    if (
-        x_api_key is None
-        or not secrets.compare_digest(
-            x_api_key,
-            API_KEY,
-        )
+    if x_api_key is None or not secrets.compare_digest(
+        x_api_key,
+        API_KEY,
     ):
         raise HTTPException(
-            status_code=
-                status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid API key",
         )
+
 
 @app.post(
     "/predict",
@@ -209,8 +185,8 @@ def require_api_key(
 )
 def predict_ticket(
     request: TicketRequest,
-    _=Depends(require_api_key),
-):
+    _: Any = Depends(require_api_key),
+) -> Any:
     PREDICTION_REQUESTS.inc()
     result = app.state.predictor.predict(request.text)
 

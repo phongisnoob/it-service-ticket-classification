@@ -1,3 +1,4 @@
+from typing import Any
 import numpy as np
 from sklearn.metrics import (
     accuracy_score,
@@ -8,32 +9,28 @@ from sklearn.metrics import (
 )
 
 
-def calculate_metrics(y_true, y_pred):
+def calculate_metrics(y_true: Any, y_pred: Any) -> Any:
 
     metrics = {
         "accuracy": accuracy_score(y_true, y_pred),
-
         "macro_precision": precision_score(
             y_true,
             y_pred,
             average="macro",
             zero_division=0,
         ),
-
         "macro_recall": recall_score(
             y_true,
             y_pred,
             average="macro",
             zero_division=0,
         ),
-
         "macro_f1": f1_score(
             y_true,
             y_pred,
             average="macro",
             zero_division=0,
         ),
-
         "weighted_f1": f1_score(
             y_true,
             y_pred,
@@ -45,7 +42,7 @@ def calculate_metrics(y_true, y_pred):
     return metrics
 
 
-def print_report(y_true, y_pred):
+def print_report(y_true: Any, y_pred: Any) -> Any:
 
     print(
         classification_report(
@@ -56,7 +53,9 @@ def print_report(y_true, y_pred):
     )
 
 
-def calculate_calibration_metrics(y_true_labels, y_pred_labels, y_confidence, n_bins=10):
+def calculate_calibration_metrics(
+    y_true_labels: Any, y_pred_labels: Any, y_confidence: Any, n_bins: Any = 10
+) -> Any:
     """Calculate calibration quality metrics for confidence-based routing.
 
     Parameters

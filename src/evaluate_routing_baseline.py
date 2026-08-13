@@ -14,30 +14,16 @@ from src.routing_utils import compute_bootstrap_ci
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
-MODEL_PATH = (
-    ROOT_DIR
-    / "artifacts"
-    / "baseline.joblib"
-)
+MODEL_PATH = ROOT_DIR / "artifacts" / "baseline.joblib"
 
-METRICS_DIR = (
-    ROOT_DIR
-    / "reports"
-    / "metrics"
-)
+METRICS_DIR = ROOT_DIR / "reports" / "metrics"
 
-THRESHOLD_PATH = (
-    METRICS_DIR
-    / "baseline_selected_threshold.json"
-)
+THRESHOLD_PATH = METRICS_DIR / "baseline_selected_threshold.json"
 
-OUTPUT_PATH = (
-    METRICS_DIR
-    / "baseline_routing_metrics.json"
-)
+OUTPUT_PATH = METRICS_DIR / "baseline_routing_metrics.json"
 
 
-def main():
+def main() -> None:
     if not THRESHOLD_PATH.exists():
         raise FileNotFoundError(f"Threshold config not found: {THRESHOLD_PATH}")
     if not MODEL_PATH.exists():
@@ -58,11 +44,13 @@ def main():
     predictions = model.predict(X_test)
     confidence = np.max(probabilities, axis=1)
 
-    results = pd.DataFrame({
-        "true_label": y_test,
-        "predicted_label": predictions,
-        "confidence": confidence,
-    })
+    results = pd.DataFrame(
+        {
+            "true_label": y_test,
+            "predicted_label": predictions,
+            "confidence": confidence,
+        }
+    )
     results["correct"] = results["true_label"] == results["predicted_label"]
 
     auto_routed_mask = results["confidence"] >= threshold
@@ -113,4 +101,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main()

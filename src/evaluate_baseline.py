@@ -14,33 +14,20 @@ from src.evaluate import (
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
-MODEL_PATH = (
-    ROOT_DIR
-    / "artifacts"
-    / "baseline.joblib"
-)
+MODEL_PATH = ROOT_DIR / "artifacts" / "baseline.joblib"
 
-OUTPUT_PATH = (
-    ROOT_DIR
-    / "reports"
-    / "metrics"
-    / "baseline_metrics.json"
-)
+OUTPUT_PATH = ROOT_DIR / "reports" / "metrics" / "baseline_metrics.json"
 
 
-def main():
-    model = joblib.load(
-        MODEL_PATH
-    )
+def main() -> None:
+    model = joblib.load(MODEL_PATH)
 
     _, _, test_df = split_data(
         load_data(),
         random_state=42,
     )
 
-    predictions = model.predict(
-        test_df["Document"]
-    )
+    predictions = model.predict(test_df["Document"])
 
     metrics = calculate_metrics(
         test_df["Topic_group"],

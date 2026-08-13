@@ -1,7 +1,10 @@
+from typing import Any
 import numpy as np
 
 
-def compute_bootstrap_ci(results_df, threshold, n_bootstraps=1000, ci=0.95, seed=42):
+def compute_bootstrap_ci(
+    results_df: Any, threshold: Any, n_bootstraps: Any = 1000, ci: Any = 0.95, seed: Any = 42
+) -> Any:
     """Compute bootstrap confidence intervals for routing accuracy and coverage.
 
     Parameters

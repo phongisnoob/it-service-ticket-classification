@@ -15,7 +15,7 @@ METRICS_DIR = ROOT_DIR / "reports" / "metrics"
 METRICS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def main():
+def main() -> None:
     if not MODEL_PATH.exists():
         raise FileNotFoundError(f"Model not found: {MODEL_PATH}")
 
@@ -27,12 +27,14 @@ def main():
     predictions = model.predict(val_df["Document"])
     confidence = np.max(probabilities, axis=1)
 
-    results = pd.DataFrame({
-        "ticket_id": val_df.index.to_numpy(),
-        "true_label": val_df["Topic_group"].values,
-        "predicted_label": predictions,
-        "confidence": confidence,
-    })
+    results = pd.DataFrame(
+        {
+            "ticket_id": val_df.index.to_numpy(),
+            "true_label": val_df["Topic_group"].values,
+            "predicted_label": predictions,
+            "confidence": confidence,
+        }
+    )
 
     results["correct"] = results["true_label"] == results["predicted_label"]
     output_path = METRICS_DIR / "baseline_val_predictions.csv"
@@ -46,6 +48,7 @@ def main():
 
     calibration_path = METRICS_DIR / "baseline_calibration_metrics.json"
     import json
+
     with open(calibration_path, "w", encoding="utf-8") as f:
         json.dump(calibration, f, indent=4)
 
@@ -57,4 +60,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main()

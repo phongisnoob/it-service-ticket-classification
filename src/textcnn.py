@@ -1,19 +1,19 @@
+from typing import Any
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
 class TextCNN(nn.Module):
-
     def __init__(
         self,
-        vocab_size,
-        embedding_dim,
-        num_filters,
-        kernel_sizes,
-        num_classes,
-        dropout=0.3,
-    ):
+        vocab_size: Any,
+        embedding_dim: Any,
+        num_filters: Any,
+        kernel_sizes: Any,
+        num_classes: Any,
+        dropout: Any = 0.3,
+    ) -> None:
 
         super().__init__()
 
@@ -23,26 +23,25 @@ class TextCNN(nn.Module):
             padding_idx=0,
         )
 
-        self.convs = nn.ModuleList([
-            nn.Conv1d(
-                in_channels=embedding_dim,
-                out_channels=num_filters,
-                kernel_size=k,
-            )
-            for k in kernel_sizes
-        ])
-
-        self.dropout = nn.Dropout(
-            dropout
+        self.convs = nn.ModuleList(
+            [
+                nn.Conv1d(
+                    in_channels=embedding_dim,
+                    out_channels=num_filters,
+                    kernel_size=k,
+                )
+                for k in kernel_sizes
+            ]
         )
+
+        self.dropout = nn.Dropout(dropout)
 
         self.fc = nn.Linear(
             num_filters * len(kernel_sizes),
             num_classes,
         )
 
-
-    def forward(self, x):
+    def forward(self, x: Any) -> Any:
 
         # [B, L]
         x = self.embedding(x)
@@ -55,10 +54,7 @@ class TextCNN(nn.Module):
         features = []
 
         for conv in self.convs:
-
-            feature = F.relu(
-                conv(x)
-            )
+            feature = F.relu(conv(x))
 
             feature = F.adaptive_max_pool1d(
                 feature,
