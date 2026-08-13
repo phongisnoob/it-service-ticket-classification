@@ -1,6 +1,7 @@
 {
     "threshold": 0.4,
     "target_accuracy": 0.9,
+    "model_sha256": "3f468e4bd27598d21afa3ac9624928015ddb4e35cf8b1105da37c3d865b5576c",
     "validation_coverage": 0.8612040133779264,
     "validation_auto_routed_accuracy": 0.9042071197411004,
     "validation_manual_review_rate": 0.1387959866220736
