@@ -61,7 +61,7 @@ def load_data(deduplicate: bool = True):
             subset=["document_normalized"],
             keep="first",
         ).copy()
-        
+
     df = df.set_index("ticket_id")
 
     return df
@@ -170,4 +170,4 @@ def split_data(
             random_state=random_state,
         )
 
-    return train_df, val_df, test_df
+    return train_df, val_df, test_df
