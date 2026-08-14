@@ -3,9 +3,9 @@
     "pytorch_version": "2.13.0+cu126",
     "dataset_sha256": "044fdace33fa564e1e60453f2941dafc95539c99878b0d32746950394b9dd4d4",
     "model_sha256": "35bea424be32250af1033785b63263519bba5e8b4bbad061f15f29f9703dcd9f",
-    "training_timestamp": "2026-08-14T04:44:39.068528+00:00",
+    "training_timestamp": "2026-08-14T12:20:29.142950+00:00",
     "python_version": "3.14.4",
-    "git_commit": "fb9e76d4d82adcbed7d5ebb95f71495821d3f762",
+    "git_commit": "2dc5dacb5343d490a66e7d3ad7e05b5dd2db7a65",
     "random_seed": 42,
     "hyperparameters": {
         "max_length": 136,
@@ -24,5 +24,5 @@
         "p95": 136.0,
         "p99": 283.0
     },
-    "best_val_macro_f1": 0.8505698810533808
+    "best_val_macro_f1": 0.8549167800498795
 }

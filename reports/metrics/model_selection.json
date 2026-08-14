@@ -3,27 +3,27 @@
     "target_accuracy": 0.9,
     "selection_rule": "Highest validation coverage subject to lower 95% auto-routing accuracy CI meeting the target; Macro F1 as tie-breaker",
     "selected_backend": "baseline",
-    "selected_threshold": 0.54,
-    "selected_model_sha256": "60e234864a320abf49deaea34c7730e230b83dae17956092144ca0af512a1ceb",
+    "selected_threshold": 0.57,
+    "selected_model_sha256": "b9149778f36f037647abe70691d19a3b27ba5c17d32f1056b91e287f9a891b3b",
     "candidates": [
         {
             "backend": "baseline",
-            "validation_accuracy": 0.8592530657748049,
-            "validation_macro_f1": 0.8624497121194232,
-            "threshold": 0.54,
-            "validation_coverage": 0.8677536231884058,
-            "validation_auto_routed_accuracy": 0.9078207804721374,
-            "validation_accuracy_ci_lower": 0.9004156768518408,
-            "model_sha256": "60e234864a320abf49deaea34c7730e230b83dae17956092144ca0af512a1ceb"
+            "validation_accuracy": 0.8562460765850597,
+            "validation_macro_f1": 0.8592734998526866,
+            "threshold": 0.57,
+            "validation_coverage": 0.8382506800585897,
+            "validation_auto_routed_accuracy": 0.9161258112830754,
+            "validation_accuracy_ci_lower": 0.9009397778036977,
+            "model_sha256": "b9149778f36f037647abe70691d19a3b27ba5c17d32f1056b91e287f9a891b3b"
         },
         {
             "backend": "cnn",
-            "validation_accuracy": 0.8492196209587514,
-            "validation_macro_f1": 0.8505698810533808,
-            "threshold": 0.67,
-            "validation_coverage": 0.8499163879598662,
-            "validation_auto_routed_accuracy": 0.9088375143466142,
-            "validation_accuracy_ci_lower": 0.9015532172514785,
+            "validation_accuracy": 0.8508056078677547,
+            "validation_macro_f1": 0.8549167800498795,
+            "threshold": 0.72,
+            "validation_coverage": 0.8198367859384809,
+            "validation_auto_routed_accuracy": 0.9185809086268504,
+            "validation_accuracy_ci_lower": 0.9034035559363833,
             "model_sha256": "35bea424be32250af1033785b63263519bba5e8b4bbad061f15f29f9703dcd9f"
         }
     ]

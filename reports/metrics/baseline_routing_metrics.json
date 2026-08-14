@@ -1,20 +1,20 @@
 {
-    "threshold": 0.54,
-    "overall_test_accuracy": 0.8531215161649944,
-    "coverage": 0.8662207357859532,
-    "manual_review_rate": 0.13377926421404682,
-    "auto_routed_accuracy": 0.9057271557271557,
+    "threshold": 0.57,
+    "overall_test_accuracy": 0.8575308126175057,
+    "coverage": 0.8255692500522248,
+    "manual_review_rate": 0.17443074994777522,
+    "auto_routed_accuracy": 0.9215587044534413,
     "bootstrap_ci_95": {
         "auto_routed_accuracy": [
-            0.8984377885079672,
-            0.9127075512160933
+            0.9127429691869874,
+            0.929643620372434
         ],
         "coverage": [
-            0.8585562987736901,
-            0.8738886566332219
+            0.8149101733862545,
+            0.8366461249216628
         ]
     },
-    "total_tickets": 7176,
-    "auto_routed_tickets": 6216,
-    "manual_review_tickets": 960
+    "total_tickets": 4787,
+    "auto_routed_tickets": 3952,
+    "manual_review_tickets": 835
 }

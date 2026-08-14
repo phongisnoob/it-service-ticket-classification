@@ -1,3 +1,11 @@
+"""Dataset loading and deterministic split utilities.
+
+The ``prepare_data`` DVC stage (src/prepare_data.py) is the authoritative
+producer of split IDs and the quality report.  ``load_data`` and
+``split_data`` consume those persisted outputs so every downstream stage
+uses identical partitions.
+"""
+
 import hashlib
 import json
 import re
@@ -14,7 +22,12 @@ def normalize_text(text: str) -> str:
 
 
 def load_data(deduplicate: bool = True) -> pd.DataFrame:
-    """Load and clean the ticket classification dataset."""
+    """Load and clean the ticket classification dataset.
+
+    Uses a full SHA-256 ticket ID (not a 16-char prefix) so IDs are
+    collision-resistant.  Blank normalized rows are rejected before
+    deduplication.
+    """
     df = pd.read_csv(DATA_PATH)[["Document", "Topic_group"]].copy()
     df = df.dropna(subset=["Document", "Topic_group"]).copy()
 
@@ -22,11 +35,16 @@ def load_data(deduplicate: bool = True) -> pd.DataFrame:
     df["Topic_group"] = df["Topic_group"].astype(str)
     df["document_normalized"] = df["Document"].apply(normalize_text)
 
-    # Stable ticket ID for split reproducibility.
+    # Reject blank normalized rows
+    blank_mask = df["document_normalized"].str.strip() == ""
+    if blank_mask.any():
+        df = df[~blank_mask].copy()
+
+    # Full SHA-256 row ID for collision resistance.
     df["ticket_id"] = df.apply(
         lambda row: hashlib.sha256(
             (row["document_normalized"] + "|" + row["Topic_group"]).encode("utf-8")
-        ).hexdigest()[:16],
+        ).hexdigest(),
         axis=1,
     )
 
@@ -43,7 +61,9 @@ def load_data(deduplicate: bool = True) -> pd.DataFrame:
 
         df = df.drop_duplicates(subset=["document_normalized"], keep="first").copy()
 
-    return df.set_index("ticket_id")
+    result = df.set_index("ticket_id")
+    assert result.index.is_unique, "ticket_id collisions after deduplication"
+    return result
 
 
 def save_split_manifest(
@@ -56,6 +76,8 @@ def save_split_manifest(
     REPORT_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     pd.DataFrame({"id": train_df.index}).to_csv(REPORT_DATA_DIR / "train_ids.csv", index=False)
+    # Write as tune_ids.csv (canonical name from prepare_data) AND val_ids.csv (legacy name)
+    pd.DataFrame({"id": val_df.index}).to_csv(REPORT_DATA_DIR / "tune_ids.csv", index=False)
     pd.DataFrame({"id": val_df.index}).to_csv(REPORT_DATA_DIR / "val_ids.csv", index=False)
     pd.DataFrame({"id": test_df.index}).to_csv(REPORT_DATA_DIR / "test_ids.csv", index=False)
 
@@ -63,7 +85,8 @@ def save_split_manifest(
         "dataset_sha256": calculate_file_sha256(DATA_PATH),
         "random_seed": random_state,
         "train_rows": len(train_df),
-        "validation_rows": len(val_df),
+        "validation_rows": len(val_df),  # kept for backward compat
+        "tune_rows": len(val_df),
         "test_rows": len(test_df),
         "total_rows": len(train_df) + len(val_df) + len(test_df),
     }
@@ -103,7 +126,10 @@ def validate_persisted_splits(
         raise RuntimeError("Persisted validation and test splits overlap.")
 
     persisted_ids = train_set | val_set | test_set
-    if persisted_ids != current_ids:
+    # When a calibration split exists (4-way split), train+tune+test < total_rows.
+    # Only enforce the exact-coverage check for 3-way splits.
+    has_calibration = "calibration_rows" in manifest
+    if not has_calibration and persisted_ids != current_ids:
         missing = current_ids - persisted_ids
         unknown = persisted_ids - current_ids
         raise RuntimeError(
@@ -111,14 +137,23 @@ def validate_persisted_splits(
             f"Missing from splits: {len(missing)}. Unknown persisted IDs: {len(unknown)}. "
             "Regenerate train/validation/test splits."
         )
+    # Always check for unknown IDs (IDs in splits that don't exist in df)
+    unknown = persisted_ids - current_ids
+    if unknown:
+        raise RuntimeError(
+            f"Persisted splits contain {len(unknown)} IDs not found in current dataset. "
+            "Regenerate train/validation/test splits."
+        )
 
     if manifest.get("train_rows") is not None and len(train_ids) != manifest["train_rows"]:
         raise RuntimeError("Persisted train split size does not match data_manifest.json.")
-    if manifest.get("validation_rows") is not None and len(val_ids) != manifest["validation_rows"]:
-        raise RuntimeError("Persisted validation split size does not match data_manifest.json.")
+    # Accept either validation_rows or tune_rows key for forward/backward compatibility
+    val_rows_key = "tune_rows" if "tune_rows" in manifest else "validation_rows"
+    if manifest.get(val_rows_key) is not None and len(val_ids) != manifest[val_rows_key]:
+        raise RuntimeError("Persisted validation/tune split size does not match data_manifest.json.")
     if manifest.get("test_rows") is not None and len(test_ids) != manifest["test_rows"]:
         raise RuntimeError("Persisted test split size does not match data_manifest.json.")
-    if (
+    if not has_calibration and (
         manifest.get("total_rows") is not None
         and len(train_ids) + len(val_ids) + len(test_ids) != manifest["total_rows"]
     ):
@@ -141,18 +176,21 @@ def split_data(
         df = load_data(deduplicate=True)
 
     train_ids_path = REPORT_DATA_DIR / "train_ids.csv"
+    # prefer tune_ids.csv (canonical from prepare_data); fall back to val_ids.csv (legacy)
+    tune_ids_path = REPORT_DATA_DIR / "tune_ids.csv"
     val_ids_path = REPORT_DATA_DIR / "val_ids.csv"
+    effective_val_path = tune_ids_path if tune_ids_path.exists() else val_ids_path
     test_ids_path = REPORT_DATA_DIR / "test_ids.csv"
     manifest_path = REPORT_DATA_DIR / "data_manifest.json"
 
     if use_persisted and all(
-        p.exists() for p in [train_ids_path, val_ids_path, test_ids_path, manifest_path]
+        p.exists() for p in [train_ids_path, effective_val_path, test_ids_path, manifest_path]
     ):
         with open(manifest_path, encoding="utf-8") as f:
             manifest: dict[str, object] = json.load(f)
 
         train_ids = pd.read_csv(train_ids_path)["id"].values
-        val_ids = pd.read_csv(val_ids_path)["id"].values
+        val_ids = pd.read_csv(effective_val_path)["id"].values
         test_ids = pd.read_csv(test_ids_path)["id"].values
 
         validate_persisted_splits(df, train_ids, val_ids, test_ids, manifest)

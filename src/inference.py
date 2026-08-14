@@ -1,12 +1,10 @@
 import json
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, Any
 
 import joblib
 import numpy as np
-import torch
 
-from src.cnn_data import encode_text
 from src.hashing import calculate_file_sha256
 from src.paths import (
     ARTIFACT_DIR,
@@ -14,7 +12,6 @@ from src.paths import (
     CNN_THRESHOLD_PATH,
     MODEL_SELECTION_PATH,
 )
-from src.textcnn import TextCNN
 
 
 class TopPrediction(TypedDict):
@@ -166,6 +163,9 @@ class CNNPredictor:
         with open(cnn_dir / "config.json", encoding="utf-8") as f:
             self.config: CNNConfig = json.load(f)
 
+        import torch
+        from src.textcnn import TextCNN
+
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.model = TextCNN(
@@ -186,6 +186,9 @@ class CNNPredictor:
         self.model_sha256 = calculate_file_sha256(weights_path)
 
     def predict(self, text: str) -> PredictionResult:
+        import torch
+        from src.cnn_data import encode_text
+
         token_ids = encode_text(text, self.vocab, max_length=self.config["max_length"])
         x = torch.tensor([token_ids], dtype=torch.long).to(self.device)
 

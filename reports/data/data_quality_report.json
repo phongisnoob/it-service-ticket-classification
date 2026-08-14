@@ -1,0 +1,28 @@
+{
+    "dataset_sha256": "044fdace33fa564e1e60453f2941dafc95539c99878b0d32746950394b9dd4d4",
+    "raw_rows": 47837,
+    "null_dropped": 0,
+    "blank_rows_dropped": 0,
+    "conflicting_label_groups": 0,
+    "exact_duplicates_dropped": 0,
+    "rows_after_cleaning": 47837,
+    "label_schema": [
+        "Access",
+        "HR Support",
+        "Hardware",
+        "Internal Project",
+        "Miscellaneous",
+        "Network",
+        "Purchase",
+        "Storage"
+    ],
+    "unexpected_labels": [
+        "Administrative rights"
+    ],
+    "split_counts": {
+        "train": 33485,
+        "tune": 4779,
+        "calibration": 4786,
+        "test": 4787
+    }
+}

@@ -5,13 +5,18 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
 from prometheus_client import Counter, Histogram, make_asgi_app
 from pydantic import BaseModel, Field, field_validator
+from starlette.routing import Match
 
 from src.inference import PredictionResult, get_predictor
 
+APP_ENV = os.getenv("APP_ENV", "development").lower()
 MODEL_BACKEND = os.getenv("MODEL_BACKEND", "auto")
+
+# Fixed label for unmatched routes so arbitrary URLs cannot create unbounded cardinality.
+_UNMATCHED_ROUTE = "UNMATCHED"
 
 HTTP_REQUESTS = Counter(
     "http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"]
@@ -25,9 +30,25 @@ MANUAL_REVIEW_COUNT = Counter("manual_review_total", "Total predictions needing 
 PREDICTION_CONFIDENCE = Histogram("prediction_confidence", "Prediction confidence score")
 
 
+def _resolve_route_template(request: Request) -> str:
+    """Return the matched route template or a fixed sentinel for unmatched routes."""
+    for route in request.app.routes:
+        match, _ = route.matches(request.scope)
+        if match == Match.FULL:
+            path: str = getattr(route, "path", _UNMATCHED_ROUTE)
+            return path
+    return _UNMATCHED_ROUTE
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    print(f"Loading model: {MODEL_BACKEND}")
+    api_key = os.getenv("API_KEY")
+    if APP_ENV == "production" and not api_key:
+        raise RuntimeError(
+            "API_KEY must be set when APP_ENV=production. "
+            "Set the variable or switch to APP_ENV=development for local/test use."
+        )
+    print(f"Loading model: {MODEL_BACKEND} (APP_ENV={APP_ENV})")
     app.state.predictor = get_predictor(MODEL_BACKEND)
     yield
     app.state.predictor = None
@@ -47,16 +68,22 @@ app.mount("/metrics", metrics_app)
 @app.middleware("http")
 async def monitor_requests(request: Request, call_next: Any) -> Any:
     start_time = time.time()
-    response = await call_next(request)
-    duration = time.time() - start_time
-
-    if request.url.path != "/metrics":
-        HTTP_REQUESTS.labels(
-            method=request.method, endpoint=request.url.path, status=response.status_code
-        ).inc()
-        HTTP_LATENCY.labels(method=request.method, endpoint=request.url.path).observe(duration)
-
-    return response
+    endpoint = _resolve_route_template(request)
+    response: Response | None = None
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        return response
+    except Exception:
+        raise
+    finally:
+        duration = time.time() - start_time
+        if endpoint != "/metrics":
+            HTTP_REQUESTS.labels(
+                method=request.method, endpoint=endpoint, status=status_code
+            ).inc()
+            HTTP_LATENCY.labels(method=request.method, endpoint=endpoint).observe(duration)
 
 
 class TicketRequest(BaseModel):
@@ -92,7 +119,7 @@ API_KEY = os.getenv("API_KEY")
 
 
 def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
-    # When API_KEY is unset the service runs in open/demo mode.
+    # When API_KEY is unset and not in production, the service runs in open/demo mode.
     if API_KEY is None:
         return
     if x_api_key is None or not secrets.compare_digest(x_api_key, API_KEY):

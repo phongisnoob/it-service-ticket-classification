@@ -1,4 +1,4 @@
 {
-    "top_label_brier_score": 0.099741,
-    "expected_calibration_error": 0.037828
+    "top_label_brier_score": 0.099594,
+    "expected_calibration_error": 0.038502
 }

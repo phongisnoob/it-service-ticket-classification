@@ -18,3 +18,22 @@ cnn:
   learning_rate: 0.001
   max_epochs: 15
   patience: 3
+
+routing:
+  # Risk-control parameters for threshold selection.
+  # Threshold selection uses simultaneous one-sided exact Clopper-Pearson
+  # confidence bounds with a Bonferroni correction for multiple candidates.
+  target_accuracy: 0.90
+  alpha: 0.05
+  min_accepted_samples: 50
+  threshold_grid_start: 0.10
+  threshold_grid_stop: 1.00
+  threshold_grid_step: 0.01
+  # Promotion: CNN must beat baseline by this minimum margin on validation
+  # coverage (subject to both meeting the accuracy requirement).
+  min_coverage_improvement: 0.02
+
+promotion:
+  # Minimum practical improvement required to promote CNN over baseline.
+  min_coverage_improvement: 0.02
+  min_accuracy_improvement: 0.005

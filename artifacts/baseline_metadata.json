@@ -3,9 +3,9 @@
     "python_version": "3.14.4",
     "scikit_learn_version": "1.9.0",
     "dataset_sha256": "044fdace33fa564e1e60453f2941dafc95539c99878b0d32746950394b9dd4d4",
-    "model_sha256": "60e234864a320abf49deaea34c7730e230b83dae17956092144ca0af512a1ceb",
-    "training_timestamp": "2026-08-14T04:24:05.562158+00:00",
-    "git_commit": "fb9e76d4d82adcbed7d5ebb95f71495821d3f762",
+    "model_sha256": "b9149778f36f037647abe70691d19a3b27ba5c17d32f1056b91e287f9a891b3b",
+    "training_timestamp": "2026-08-14T12:18:52.285533+00:00",
+    "git_commit": "2dc5dacb5343d490a66e7d3ad7e05b5dd2db7a65",
     "random_seed": 42,
     "hyperparameters": {
         "ngram_range": [
@@ -20,10 +20,10 @@
         "calibration_method": "sigmoid (5-fold CV on training set)"
     },
     "val_metrics": {
-        "accuracy": 0.8592530657748049,
-        "macro_precision": 0.8763385623558575,
-        "macro_recall": 0.8504519832549253,
-        "macro_f1": 0.8624497121194232,
-        "weighted_f1": 0.8594018422717572
+        "accuracy": 0.8562460765850597,
+        "macro_precision": 0.8722731126445622,
+        "macro_recall": 0.8476947962369115,
+        "macro_f1": 0.8592734998526866,
+        "weighted_f1": 0.8564623164913236
     }
 }
