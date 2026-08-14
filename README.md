@@ -1,19 +1,18 @@
 
 # IT Service Ticket Classification & Confidence-Based Routing
 
-An end-to-end NLP project for classifying IT service desk tickets into eight support categories and routing low-confidence cases to human review. The project compares a classical **TF-IDF + Logistic Regression** pipeline with a **PyTorch TextCNN**, then serves the selected production model through FastAPI.
+An NLP project that sorts IT service desk tickets into eight support categories. Instead of forcing a prediction on every ticket, the system flags ambiguous cases for manual review based on model confidence.
 
-The production model is intentionally the simpler one: Logistic Regression slightly outperformed TextCNN on the held-out test set while also delivering a better confidence-routing trade-off.
+I started this project to compare a classical TF-IDF + Logistic Regression baseline against a PyTorch TextCNN. The Logistic Regression model ended up performing slightly better on the test set, so that's what runs in the FastAPI backend by default.
 
-## Why this project is useful
+## Overview
 
-- Automates routing across **8 IT support categories**.
-- Uses a **47,837-ticket** public dataset with a stratified 70/15/15 train-validation-test split.
-- Compares a strong classical NLP baseline against a neural text classifier instead of assuming the more complex model is better.
-- Selects the confidence threshold on the **validation set**, keeping the test set for final evaluation.
-- Escalates uncertain tickets to human review rather than forcing every prediction.
-- Exposes inference through **FastAPI** with health checks, top-3 predictions, confidence, and a manual-review flag.
-- Includes automated API tests and saved evaluation reports/figures.
+Most classification tutorials just try to maximize accuracy. In a real helpdesk, you can't afford to auto-route ambiguous tickets. This project focuses on the practical trade-off between coverage (how many tickets we automate) and accuracy (how often the automated routing is correct).
+
+Key details:
+- Trained on a public dataset of **47,837 tickets**, stratified into a 70/15/15 split.
+- The routing threshold is tuned strictly on the validation set, keeping the test set isolated.
+- The API returns the top 3 categories, the confidence score, and a boolean flag indicating if the ticket needs manual review.
 
 ## Results
 
@@ -26,13 +25,15 @@ The production model is intentionally the simpler one: Logistic Regression sligh
 
 ![Model performance comparison](reports/figures/model_comparison.png)
 
-Logistic Regression was selected using validation-set routing coverage, subject to at least 90% accuracy on automatically routed tickets. The selected model was then evaluated on the held-out test set.
+I picked Logistic Regression for the final pipeline because it yielded the best routing coverage on the validation set (while holding auto-routed accuracy above 90%). 
+
+To make the confidence scores actually mean something, the baseline is calibrated via `CalibratedClassifierCV` (5-fold CV with Platt scaling). It achieved an Expected Calibration Error (ECE) of **0.0866** and a Top-label Brier Score of **0.1037** on the validation set.
 
 ### Confidence-based routing
 
-The production threshold is selected on the validation set by requiring at least **90% accuracy among automatically routed tickets**, then choosing the qualifying threshold with the highest coverage.
+I initially tried picking the routing threshold by just checking accuracy on the validation split. However, to avoid picking a "lucky" threshold that overfits, the script now computes a 95% bootstrap confidence interval (1,000 resamples). It requires the **lower bound** of the accuracy CI to be at least 90%, then picks the threshold that maximizes coverage.
 
-For Logistic Regression, the selected threshold is **0.40**.
+For Logistic Regression, the chosen threshold was **0.40**.
 
 | Test-set routing metric | Result |
 |---|---:|
@@ -89,6 +90,18 @@ flowchart LR
 ```
 
 The experimental TextCNN uses learned embeddings, parallel 1D convolutions with kernel sizes 3/4/5, global max pooling, dropout, and a linear classifier.
+
+## System details
+
+**Data handling:** The script checks for identical tickets that have conflicting labels and drops them before training. It also saves the exact train/validation/test IDs alongside a SHA-256 hash of the source dataset. If you modify the CSV later, the pipeline will refuse to load the stale splits, preventing accidental train/test leakage.
+
+**Model integrity:** It's easy to deploy a new model but forget to update its threshold config. To prevent this, the JSON config stores the SHA-256 hash of the model that generated it. The API raises an exception at startup if the hashes don't match. 
+
+**Observability:** The FastAPI app exposes standard Prometheus metrics at `/metrics` so you can monitor latency, request volume, confidence distributions, and how often tickets are being routed vs. flagged for review.
+
+**Security:** The `/predict` endpoint checks for an `X-API-Key` header (using constant-time comparison). PyTorch weights are loaded with `weights_only=True` to avoid pickle exploits.
+
+**CI/CD:** The repository uses `ruff` for formatting/linting and `mypy` in strict mode. A GitHub Actions workflow verifies these checks and runs the `pytest` suite on every push.
 
 ## Repository structure
 
@@ -346,18 +359,14 @@ The current tests cover:
 
 ## Design decisions
 
-**Why Logistic Regression in production?**  
-TextCNN was included as a neural benchmark, but the TF-IDF model produced higher Accuracy, Macro F1, Weighted F1, routing coverage, and auto-routed accuracy. The production choice therefore favors measured performance and simpler serving over model complexity.
+**Why Logistic Regression?**  
+I built the TextCNN expecting it to capture semantics better, but TF-IDF + Logistic Regression actually outperformed it slightly across the board (Accuracy, F1, and routing coverage). It's also much faster to serve and requires fewer dependencies, so it's the practical choice for production here.
 
-**Why use Macro F1?**  
-The ticket classes are imbalanced. Macro F1 gives equal importance to each category rather than allowing larger classes to dominate the summary metric.
-
-**Why a confidence threshold?**  
-The system does not need to automate every ticket. Validation-set thresholding trades some coverage for higher accuracy on tickets that are routed automatically.
+**Why evaluate with Macro F1?**  
+The dataset is highly imbalanced. Using Macro F1 prevents the model from looking artificially good just by guessing the majority classes correctly.
 
 ## Limitations
 
-- Confidence scores are not explicitly calibrated probabilities.
 - Several ticket categories have overlapping language, which creates unavoidable ambiguity for a text-only classifier.
 - The current CNN tokenizer is whitespace-based and intentionally simple.
 - Evaluation is based on one public dataset; production data may have different vocabulary and class distributions.
