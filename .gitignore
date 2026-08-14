@@ -44,3 +44,6 @@ artifacts/**/*.pt
 reports/metrics/*_predictions.csv
 reports/metrics/high_confidence_errors.csv
 reports/private/
+
+# Local development artifacts
+monkeytype.sqlite3

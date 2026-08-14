@@ -7,6 +7,7 @@ from src.paths import METRICS_DIR
 
 def main() -> None:
     baseline_path = METRICS_DIR / "baseline_metrics.json"
+    baseline_calib_path = METRICS_DIR / "baseline_calibration_metrics.json"
     cnn_path = METRICS_DIR / "cnn_metrics.json"
 
     if not baseline_path.exists() or not cnn_path.exists():
@@ -15,6 +16,11 @@ def main() -> None:
 
     with open(baseline_path, "r", encoding="utf-8") as f:
         baseline = json.load(f)
+
+    if baseline_calib_path.exists():
+        with open(baseline_calib_path, "r", encoding="utf-8") as f:
+            baseline_calib = json.load(f)
+            baseline.update(baseline_calib)
 
     with open(cnn_path, "r", encoding="utf-8") as f:
         cnn = json.load(f)

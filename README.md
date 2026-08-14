@@ -20,30 +20,32 @@ Key details:
 
 | Model | Accuracy | Macro F1 | Weighted F1 |
 |---|---:|---:|---:|
-| **TF-IDF + Logistic Regression** | **85.20%** | **85.19%** | **85.30%** |
+| **TF-IDF + Logistic Regression** | **85.31%** | **85.28%** | **85.34%** |
 | TextCNN | 84.88% | 85.01% | 84.94% |
 
 ![Model performance comparison](reports/figures/model_comparison.png)
 
 I picked Logistic Regression for the final pipeline because it yielded the best routing coverage on the validation set (while holding auto-routed accuracy above 90%). 
 
-To make the confidence scores actually mean something, the baseline is calibrated via `CalibratedClassifierCV` (5-fold CV with Platt scaling). It achieved an Expected Calibration Error (ECE) of **0.0866** and a Top-label Brier Score of **0.1037** on the validation set.
+The production baseline uses sigmoid probability calibration through `CalibratedClassifierCV` with 5-fold cross-validation on the training set. On the validation set, it achieved an Expected Calibration Error (ECE) of 0.0866 and a top-label Brier score of 0.1037.
 
 ### Confidence-based routing
 
 I initially tried picking the routing threshold by just checking accuracy on the validation split. However, to avoid picking a "lucky" threshold that overfits, the script now computes a 95% bootstrap confidence interval (1,000 resamples). It requires the **lower bound** of the accuracy CI to be at least 90%, then picks the threshold that maximizes coverage.
 
-For Logistic Regression, the chosen threshold was **0.40**.
+For Logistic Regression, the chosen threshold was **0.54**.
 
 | Test-set routing metric | Result |
 |---|---:|
-| Overall accuracy | 85.20% |
-| Auto-route coverage | **85.62%** |
-| Accuracy on auto-routed tickets | **90.67%** |
-| Manual-review rate | 14.38% |
-| Auto-routed tickets | 6,144 / 7,176 |
+| Overall accuracy | 85.31% |
+| Auto-route coverage | **86.62%** |
+| Accuracy on auto-routed tickets | **90.57%** |
+| Manual-review rate | 13.38% |
+| Auto-routed tickets | 6,216 / 7,176 |
 
 ![Routing accuracy versus coverage](reports/figures/baseline_threshold_tradeoff.png)
+
+On the held-out test set, auto-routed tickets achieved 90.57% accuracy. The 95% bootstrap confidence interval was approximately 89.84%–91.27%, so the 90% target should be interpreted as a validation-time routing criterion rather than a guaranteed lower bound on future data.
 
 This converts the classifier into a simple human-in-the-loop routing system: high-confidence tickets are routed automatically, while lower-confidence cases are flagged for manual review.
 
@@ -84,7 +86,7 @@ flowchart LR
     A[Ticket text] --> B[TF-IDF<br/>unigrams + bigrams]
     B --> C[Logistic Regression]
     C --> D[Class scores]
-    D --> E{Confidence >= 0.40?}
+    D --> E{Confidence >= 0.54?}
     E -->|Yes| F[Auto-route]
     E -->|No| G[Human review]
 ```
@@ -272,7 +274,7 @@ Example response shape:
 {
   "category": "Access",
   "confidence": 0.99,
-  "threshold": 0.4,
+  "threshold": 0.54,
   "needs_manual_review": false,
   "top_3": [
     {"category": "Access", "probability": 0.99},
@@ -367,6 +369,7 @@ The dataset is highly imbalanced. Using Macro F1 prevents the model from looking
 
 ## Limitations
 
+- Although the production baseline is sigmoid-calibrated, calibration quality may change under distribution shift and should be monitored using production outcomes or human-review feedback.
 - Several ticket categories have overlapping language, which creates unavoidable ambiguity for a text-only classifier.
 - The current CNN tokenizer is whitespace-based and intentionally simple.
 - Evaluation is based on one public dataset; production data may have different vocabulary and class distributions.
