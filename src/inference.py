@@ -30,6 +30,20 @@ class PredictionResult(TypedDict):
     top_3: list[TopPrediction]
 
 
+class CNNConfig(TypedDict):
+    max_length: int
+    embedding_dim: int
+    num_filters: int
+    kernel_sizes: list[int]
+    num_classes: int
+    dropout: float
+    training_truncation_rate: float
+    p50: float
+    p90: float
+    p95: float
+    p99: float
+
+
 def get_selected_backend() -> str:
     if not MODEL_SELECTION_PATH.exists():
         raise FileNotFoundError(
@@ -150,17 +164,17 @@ class CNNPredictor:
             self.labels: list[str] = json.load(f)
 
         with open(cnn_dir / "config.json", encoding="utf-8") as f:
-            self.config: dict[str, object] = json.load(f)
+            self.config: CNNConfig = json.load(f)
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.model = TextCNN(
             vocab_size=len(self.vocab),
-            embedding_dim=int(self.config["embedding_dim"]),
-            num_filters=int(self.config["num_filters"]),
-            kernel_sizes=list(self.config["kernel_sizes"]),  # type: ignore[arg-type]
-            num_classes=int(self.config["num_classes"]),
-            dropout=float(self.config["dropout"]),
+            embedding_dim=self.config["embedding_dim"],
+            num_filters=self.config["num_filters"],
+            kernel_sizes=self.config["kernel_sizes"],
+            num_classes=self.config["num_classes"],
+            dropout=self.config["dropout"],
         )
 
         state_dict = torch.load(weights_path, map_location=self.device, weights_only=True)
@@ -172,7 +186,7 @@ class CNNPredictor:
         self.model_sha256 = calculate_file_sha256(weights_path)
 
     def predict(self, text: str) -> PredictionResult:
-        token_ids = encode_text(text, self.vocab, max_length=int(self.config["max_length"]))
+        token_ids = encode_text(text, self.vocab, max_length=self.config["max_length"])
         x = torch.tensor([token_ids], dtype=torch.long).to(self.device)
 
         with torch.no_grad():

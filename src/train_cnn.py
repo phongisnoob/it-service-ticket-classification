@@ -49,7 +49,7 @@ def train_one_epoch(
     model: TextCNN,
     loader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
     criterion: nn.CrossEntropyLoss,
-    optimizer: torch.optim.Adam,  # type: ignore[type-arg]
+    optimizer: torch.optim.Adam,
     device: torch.device,
     dataset_size: int,
 ) -> float:
@@ -151,7 +151,7 @@ def train_cnn() -> None:
     ).to(device)
 
     criterion = nn.CrossEntropyLoss(weight=class_weights)
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)  # type: ignore[attr-defined]
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     CNN_DIR.mkdir(parents=True, exist_ok=True)
 

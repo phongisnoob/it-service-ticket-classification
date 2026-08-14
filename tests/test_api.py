@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -6,7 +8,7 @@ from src.inference import PredictionResult
 
 
 @pytest.fixture
-def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
+def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setattr(api, "get_predictor", lambda backend: FakePredictor())
     with TestClient(api.app) as c:
         yield c

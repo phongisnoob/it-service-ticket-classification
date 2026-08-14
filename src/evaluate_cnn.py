@@ -1,6 +1,7 @@
 import json
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import torch
 from sklearn.metrics import (
@@ -80,15 +81,15 @@ def main() -> None:
             all_pred.extend(predictions.cpu().tolist())
             all_confidence.extend(confidence.cpu().tolist())
 
-    metrics = calculate_metrics(all_true, all_pred)
+    metrics = calculate_metrics(all_true, np.asarray(all_pred))
 
     true_names = [labels[index] for index in all_true]
     pred_names = [labels[index] for index in all_pred]
 
     calib_metrics = calculate_calibration_metrics(
         y_true_labels=true_names,
-        y_pred_labels=pred_names,
-        y_confidence=all_confidence,
+        y_pred_labels=np.asarray(pred_names),
+        y_confidence=np.asarray(all_confidence),
     )
     metrics.update(calib_metrics)
 

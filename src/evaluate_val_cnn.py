@@ -1,5 +1,6 @@
 import json
 
+import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
@@ -76,14 +77,14 @@ def main() -> None:
     true_labels = [labels[index] for index in y_val]
     predicted_labels = [labels[index] for index in all_predictions]
 
-    val_metrics = calculate_metrics(true_labels, predicted_labels)
+    val_metrics = calculate_metrics(true_labels, np.asarray(predicted_labels))
     with open(METRICS_DIR / "cnn_val_metrics.json", "w", encoding="utf-8") as f:
         json.dump(val_metrics, f, indent=4)
 
     calib_metrics = calculate_calibration_metrics(
         y_true_labels=true_labels,
-        y_pred_labels=predicted_labels,
-        y_confidence=all_confidences,
+        y_pred_labels=np.asarray(predicted_labels),
+        y_confidence=np.asarray(all_confidences),
     )
     with open(METRICS_DIR / "cnn_val_calibration_metrics.json", "w", encoding="utf-8") as f:
         json.dump(calib_metrics, f, indent=4)
