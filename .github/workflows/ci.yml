@@ -9,6 +9,9 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    env:
+      APP_ENV: test
+      MLFLOW_TRACKING_ENABLED: "false"
     steps:
       - uses: actions/checkout@v4
 
@@ -19,9 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-mlops.txt
-          pip install ruff mypy
+          pip install -r requirements-dev.txt
 
       - name: Lint with ruff
         run: ruff check .
@@ -29,5 +30,221 @@ jobs:
       - name: Type check with mypy
         run: mypy src/ app/ tests/
 
-      - name: Run tests
-        run: python -m pytest -v
+      - name: Run unit and API tests
+        run: python -m pytest -v tests/test_api.py tests/test_api_hardening.py tests/test_ml_smoke.py tests/test_validation_design.py
+
+  artifact-integration:
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    env:
+      APP_ENV: test
+      MLFLOW_TRACKING_ENABLED: "false"
+      DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Configure DVC remote credentials
+        run: |
+          dvc remote modify dagshub --local user phongisnoob
+          dvc remote modify dagshub --local password "$DAGSHUB_TOKEN"
+
+      - name: Pull DVC artifacts
+        run: |
+          dvc pull artifacts/baseline.joblib artifacts/cnn/textcnn.pt \
+            artifacts/cnn/vocab.json artifacts/cnn/labels.json \
+            artifacts/cnn/config.json artifacts/cnn/artifact_manifest.json \
+            artifacts/baseline_metadata.json artifacts/cnn/cnn_metadata.json \
+            reports/metrics/baseline_selected_threshold.json \
+            reports/metrics/selected_threshold.json \
+            reports/metrics/model_selection.json \
+            reports/data/train_ids.csv reports/data/tune_ids.csv \
+            reports/data/test_ids.csv reports/data/data_manifest.json
+
+      - name: Verify artifact hashes
+        run: |
+          python - <<'EOF'
+          import json, hashlib, sys
+          from pathlib import Path
+
+          def sha256(p):
+              h = hashlib.sha256()
+              with open(p, 'rb') as f:
+                  for chunk in iter(lambda: f.read(1048576), b''):
+                      h.update(chunk)
+              return h.hexdigest()
+
+          # Verify baseline model hash matches threshold artifact
+          with open('reports/metrics/baseline_selected_threshold.json') as f:
+              cfg = json.load(f)
+          expected = cfg.get('model_sha256', '')
+          actual = sha256('artifacts/baseline.joblib')
+          if actual != expected:
+              print(f'FAIL baseline hash: expected {expected}, got {actual}', file=sys.stderr)
+              sys.exit(1)
+
+          # Verify CNN artifacts via manifest
+          manifest = json.load(open('artifacts/cnn/artifact_manifest.json'))
+          for fname, expected_hash in manifest.items():
+              actual_hash = sha256(f'artifacts/cnn/{fname}')
+              if actual_hash != expected_hash:
+                  print(f'FAIL CNN {fname}: expected {expected_hash}, got {actual_hash}', file=sys.stderr)
+                  sys.exit(1)
+
+          print('All artifact hashes verified.')
+          EOF
+
+      - name: Run model integration tests
+        run: python -m pytest -v tests/test_integration.py
+
+      - name: MLflow smoke test
+        run: |
+          python - <<'EOF'
+          import os
+          os.environ['MLFLOW_TRACKING_ENABLED'] = 'false'
+          from src.inference import BaselinePredictor, CNNPredictor
+          bp = BaselinePredictor()
+          result = bp.predict("I cannot access the VPN from home")
+          assert result['category'], "No category returned"
+          assert 0 <= result['confidence'] <= 1
+          assert len(result['top_3']) == 3
+          print(f"Baseline: {result['category']} ({result['confidence']:.3f})")
+
+          cp = CNNPredictor()
+          result2 = cp.predict("Printer not working in office 3B")
+          assert result2['category'], "No category returned"
+          print(f"CNN: {result2['category']} ({result2['confidence']:.3f})")
+          print('MLflow smoke test passed.')
+          EOF
+
+  docker-build-and-test:
+    runs-on: ubuntu-latest
+    needs: artifact-integration
+    env:
+      DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install DVC
+        run: |
+          python -m pip install --upgrade pip
+          pip install dvc[webdav] dvc-webdav
+
+      - name: Configure DVC and pull artifacts
+        run: |
+          dvc remote modify dagshub --local user phongisnoob
+          dvc remote modify dagshub --local password "$DAGSHUB_TOKEN"
+          dvc pull artifacts/baseline.joblib artifacts/cnn/textcnn.pt \
+            artifacts/cnn/vocab.json artifacts/cnn/labels.json \
+            artifacts/cnn/config.json artifacts/cnn/artifact_manifest.json \
+            artifacts/baseline_metadata.json artifacts/cnn/cnn_metadata.json \
+            reports/metrics/baseline_selected_threshold.json \
+            reports/metrics/selected_threshold.json \
+            reports/metrics/model_selection.json \
+            reports/data/train_ids.csv reports/data/tune_ids.csv \
+            reports/data/test_ids.csv reports/data/data_manifest.json
+
+      - name: Build Docker image (baseline backend)
+        run: |
+          docker build -t it-ticket-classifier:baseline \
+            --build-arg MODEL_BACKEND=baseline .
+
+      - name: Build Docker image (CNN backend)
+        run: |
+          docker build -t it-ticket-classifier:cnn \
+            --build-arg MODEL_BACKEND=cnn .
+
+      - name: Start baseline container and test
+        run: |
+          docker run -d --name baseline-test \
+            -e MODEL_BACKEND=baseline \
+            -e APP_ENV=production \
+            -e API_KEY=test_key \
+            -p 8001:8000 \
+            it-ticket-classifier:baseline
+
+          # Wait for readiness
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8001/health; then
+              echo "Baseline ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+
+          # /health check
+          curl -sf http://localhost:8001/health | python -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          assert d['status'] == 'ok', f'health failed: {d}'
+          assert d['model_backend'] == 'baseline', f'wrong backend: {d}'
+          assert d['model_sha256'], 'no model_sha256'
+          assert d['threshold'] is not None, 'no threshold'
+          print('Health check passed:', d['model_backend'])
+          "
+
+          # /predict check
+          curl -sf -X POST http://localhost:8001/predict \
+            -H 'Content-Type: application/json' \
+            -H 'X-API-Key: test_key' \
+            -d '{"text": "I cannot access the shared drive"}' | python -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          assert d['category'], 'no category'
+          assert 0 <= d['confidence'] <= 1, 'invalid confidence'
+          assert 'top_3' in d and len(d['top_3']) == 3, 'top_3 missing'
+          probs = [x['probability'] for x in d['top_3']]
+          assert probs == sorted(probs, reverse=True), 'top_3 not sorted'
+          print('Predict check passed:', d['category'], d['confidence'])
+          "
+
+          docker stop baseline-test
+
+      - name: Start CNN container and test
+        run: |
+          docker run -d --name cnn-test \
+            -e MODEL_BACKEND=cnn \
+            -e APP_ENV=production \
+            -e API_KEY=test_key \
+            -p 8002:8000 \
+            it-ticket-classifier:cnn
+
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8002/health; then
+              echo "CNN ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+
+          curl -sf http://localhost:8002/health | python -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          assert d['status'] == 'ok', f'health failed: {d}'
+          assert d['model_backend'] == 'cnn', f'wrong backend: {d}'
+          print('CNN health check passed:', d['model_backend'])
+          "
+
+          curl -sf -X POST http://localhost:8002/predict \
+            -H 'Content-Type: application/json' \
+            -H 'X-API-Key: test_key' \
+            -d '{"text": "Network drive is unavailable"}' | python -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          assert d['category']
+          print('CNN predict check passed:', d['category'])
+          "
+
+          docker stop cnn-test

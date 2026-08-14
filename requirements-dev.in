@@ -1,0 +1,8 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+-r requirements-train.in
+-r requirements-mlops.in
+pytest
+httpx
+psutil
+ruff
+mypy
