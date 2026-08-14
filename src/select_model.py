@@ -1,17 +1,32 @@
 import json
+from pathlib import Path
+from typing import TypedDict
 
 import pandas as pd
-from sklearn.metrics import (
-    accuracy_score,
-    f1_score,
-)
+from sklearn.metrics import accuracy_score, f1_score
 
 from src.paths import METRICS_DIR
 
 TARGET_ACCURACY = 0.90
 
 
-MODEL_CONFIGS = {
+class CandidateResult(TypedDict):
+    backend: str
+    validation_accuracy: float
+    validation_macro_f1: float
+    threshold: float
+    validation_coverage: float
+    validation_auto_routed_accuracy: float
+    validation_accuracy_ci_lower: float
+    model_sha256: str
+
+
+class ModelPaths(TypedDict):
+    predictions: Path
+    threshold: Path
+
+
+MODEL_CONFIGS: dict[str, ModelPaths] = {
     "baseline": {
         "predictions": METRICS_DIR / "baseline_val_predictions.csv",
         "threshold": METRICS_DIR / "baseline_selected_threshold.json",
@@ -23,44 +38,30 @@ MODEL_CONFIGS = {
 }
 
 
-def load_candidate(
-    backend: str,
-    paths: dict,  # type: ignore
-) -> dict:  # type: ignore
+def load_candidate(backend: str, paths: ModelPaths) -> CandidateResult:
     predictions_path = paths["predictions"]
     threshold_path = paths["threshold"]
 
     if not predictions_path.exists():
         raise FileNotFoundError(f"Validation predictions not found: {predictions_path}")
-
     if not threshold_path.exists():
         raise FileNotFoundError(f"Threshold config not found: {threshold_path}")
 
     predictions = pd.read_csv(predictions_path)
+    with open(threshold_path, encoding="utf-8") as f:
+        threshold = json.load(f)
 
-    with open(
-        threshold_path,
-        "r",
-        encoding="utf-8",
-    ) as file:
-        threshold = json.load(file)
-
-    ci_lower = threshold.get("validation_accuracy_ci_lower")
-
+    ci_lower: float | None = threshold.get("validation_accuracy_ci_lower")
     if ci_lower is None:
         raise RuntimeError(
-            f"{backend} threshold artifact does not "
-            "contain validation_accuracy_ci_lower. "
+            f"{backend} threshold artifact does not contain validation_accuracy_ci_lower. "
             "Run threshold analysis again."
         )
 
     return {
         "backend": backend,
         "validation_accuracy": float(
-            accuracy_score(
-                predictions["true_label"],
-                predictions["predicted_label"],
-            )
+            accuracy_score(predictions["true_label"], predictions["predicted_label"])
         ),
         "validation_macro_f1": float(
             f1_score(
@@ -79,42 +80,27 @@ def load_candidate(
 
 
 def main() -> None:
-    candidates = [
-        load_candidate(
-            backend,
-            paths,
-        )
-        for backend, paths in MODEL_CONFIGS.items()
-    ]
+    candidates = [load_candidate(backend, paths) for backend, paths in MODEL_CONFIGS.items()]
 
-    eligible = [
-        candidate
-        for candidate in candidates
-        if candidate["validation_accuracy_ci_lower"] >= TARGET_ACCURACY
-    ]
+    eligible = [c for c in candidates if c["validation_accuracy_ci_lower"] >= TARGET_ACCURACY]
 
     if not eligible:
         raise RuntimeError(
             "No model satisfies the routing requirement: "
-            f"lower 95% accuracy CI >= "
-            f"{TARGET_ACCURACY:.0%}."
+            f"lower 95% accuracy CI >= {TARGET_ACCURACY:.0%}."
         )
 
     winner = max(
         eligible,
-        key=lambda candidate: (
-            candidate["validation_coverage"],
-            candidate["validation_macro_f1"],
-        ),
+        key=lambda c: (c["validation_coverage"], c["validation_macro_f1"]),
     )
 
-    output = {
+    output: dict[str, object] = {
         "selection_dataset": "validation",
         "target_accuracy": TARGET_ACCURACY,
         "selection_rule": (
             "Highest validation coverage subject to "
-            "lower 95% auto-routing accuracy CI "
-            "meeting the target; Macro F1 as tie-breaker"
+            "lower 95% auto-routing accuracy CI meeting the target; Macro F1 as tie-breaker"
         ),
         "selected_backend": winner["backend"],
         "selected_threshold": winner["threshold"],
@@ -123,32 +109,12 @@ def main() -> None:
     }
 
     output_path = METRICS_DIR / "model_selection.json"
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(output, f, indent=4)
 
-    with open(
-        output_path,
-        "w",
-        encoding="utf-8",
-    ) as file:
-        json.dump(
-            output,
-            file,
-            indent=4,
-        )
-
-    print(
-        "Selected backend:",
-        winner["backend"],
-    )
-
-    print(
-        "Selected threshold:",
-        winner["threshold"],
-    )
-
-    print(
-        "Saved to:",
-        output_path,
-    )
+    print(f"Selected backend: {winner['backend']}")
+    print(f"Selected threshold: {winner['threshold']}")
+    print(f"Saved to: {output_path}")
 
 
 if __name__ == "__main__":

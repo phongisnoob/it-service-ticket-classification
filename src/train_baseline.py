@@ -2,7 +2,6 @@ import datetime
 import json
 import platform
 import subprocess
-from typing import Any
 
 import joblib
 import sklearn
@@ -17,22 +16,15 @@ from src.hashing import calculate_file_sha256
 from src.paths import ARTIFACT_DIR, DATA_PATH, METRICS_DIR, ROOT_DIR
 
 
-def train_baseline() -> Any:
-    # -----------------------------------------
-    # Load and split data
-    # -----------------------------------------
+def train_baseline() -> tuple[CalibratedClassifierCV, dict[str, float]]:
     df = load_data()
     train_df, val_df, _ = split_data(df)
 
     X_train = train_df["Document"]
     y_train = train_df["Topic_group"]
-
     X_val = val_df["Document"]
     y_val = val_df["Topic_group"]
 
-    # -----------------------------------------
-    # Base Model Pipeline
-    # -----------------------------------------
     base_pipeline = Pipeline(
         [
             (
@@ -47,39 +39,24 @@ def train_baseline() -> Any:
             ),
             (
                 "classifier",
-                LogisticRegression(
-                    max_iter=2000,
-                    class_weight="balanced",
-                ),
+                LogisticRegression(max_iter=2000, class_weight="balanced"),
             ),
         ]
     )
 
-    # -----------------------------------------
-    # Calibration Stage
-    # -----------------------------------------
     print("Training and calibrating baseline with 5-fold CV...")
     calibrated_model = CalibratedClassifierCV(
-        estimator=base_pipeline,
-        method="sigmoid",
-        cv=5,
-        n_jobs=1,
+        estimator=base_pipeline, method="sigmoid", cv=5, n_jobs=1
     )
     calibrated_model.fit(X_train, y_train)
 
-    # -----------------------------------------
-    # Validation
-    # -----------------------------------------
     val_predictions = calibrated_model.predict(X_val)
     val_metrics = calculate_metrics(y_val, val_predictions)
 
     print("\nValidation metrics")
     for key, value in val_metrics.items():
-        print(f"{key}: {value:.4f}")
+        print(f"  {key}: {value:.4f}")
 
-    # -----------------------------------------
-    # Save model & metadata
-    # -----------------------------------------
     model_path = ARTIFACT_DIR / "baseline.joblib"
     joblib.dump(calibrated_model, model_path)
 
@@ -87,15 +64,13 @@ def train_baseline() -> Any:
     dataset_sha256 = calculate_file_sha256(DATA_PATH)
 
     try:
-        git_commit = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"],
-            cwd=ROOT_DIR,
-            text=True,
+        git_commit: str | None = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT_DIR, text=True
         ).strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         git_commit = None
 
-    metadata = {
+    metadata: dict[str, object] = {
         "model_backend": "baseline",
         "python_version": platform.python_version(),
         "scikit_learn_version": sklearn.__version__,
@@ -116,20 +91,13 @@ def train_baseline() -> Any:
         "val_metrics": val_metrics,
     }
 
-    with open(
-        ARTIFACT_DIR / "baseline_metadata.json",
-        "w",
-        encoding="utf-8",
-    ) as f:
+    with open(ARTIFACT_DIR / "baseline_metadata.json", "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=4)
 
-    print(f"\nModel saved to {model_path} (SHA-256: {model_sha256[:12]}...)")
-
-    # -----------------------------------------
-    # Save metrics
-    # -----------------------------------------
     with open(METRICS_DIR / "baseline_val_metrics.json", "w", encoding="utf-8") as f:
         json.dump(val_metrics, f, indent=4)
+
+    print(f"\nModel saved to {model_path} (SHA-256: {model_sha256[:12]}...)")
 
     return calibrated_model, val_metrics
 

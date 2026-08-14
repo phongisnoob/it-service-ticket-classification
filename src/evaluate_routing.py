@@ -4,15 +4,8 @@ import pandas as pd
 
 from src.paths import METRICS_DIR
 
-# ============================================================
-# Paths
-# ============================================================
-
-
 TEST_PREDICTIONS_PATH = METRICS_DIR / "cnn_test_predictions.csv"
-
 THRESHOLD_PATH = METRICS_DIR / "selected_threshold.json"
-
 OUTPUT_PATH = METRICS_DIR / "routing_metrics.json"
 
 

@@ -1,46 +1,29 @@
-from typing import Any
-
 import numpy as np
+import pandas as pd
 
 
 def compute_bootstrap_ci(
-    results_df: Any, threshold: Any, n_bootstraps: Any = 1000, ci: Any = 0.95, seed: Any = 42
-) -> Any:
-    """Compute bootstrap confidence intervals for routing accuracy and coverage.
+    results_df: pd.DataFrame,
+    threshold: float,
+    n_bootstraps: int = 1000,
+    ci: float = 0.95,
+    seed: int = 42,
+) -> tuple[list[float], list[float]]:
+    """Bootstrap 95% CI for routing accuracy and coverage at a given threshold.
 
-    Parameters
-    ----------
-    results_df : pd.DataFrame
-        Must contain 'confidence' and 'correct' columns.
-    threshold : float
-        Confidence threshold for auto-routing.
-    n_bootstraps : int
-        Number of bootstrap samples.
-    ci : float
-        Confidence interval level (e.g. 0.95 for 95% CI).
-    seed : int
-        Random seed for reproducibility.
-
-    Returns
-    -------
-    tuple[list[float], list[float]]
-        (accuracy_ci, coverage_ci) each as [lower, upper].
+    Returns (accuracy_ci, coverage_ci) each as [lower, upper].
     """
     rng = np.random.default_rng(seed)
-    boot_accs = []
-    boot_covs = []
+    boot_accs: list[float] = []
+    boot_covs: list[float] = []
     n = len(results_df)
 
     for _ in range(n_bootstraps):
         indices = rng.integers(0, n, size=n)
         sample = results_df.iloc[indices]
         routed = sample[sample["confidence"] >= threshold]
-        coverage = len(routed) / n
-        boot_covs.append(coverage)
-        if len(routed) > 0:
-            boot_accs.append(routed["correct"].mean())
-        else:
-            boot_accs.append(0.0)
+        boot_covs.append(len(routed) / n)
+        boot_accs.append(float(routed["correct"].mean()) if len(routed) > 0 else 0.0)
 
     alpha = (1.0 - ci) / 2.0
     acc_ci = np.percentile(boot_accs, [alpha * 100, (1 - alpha) * 100])

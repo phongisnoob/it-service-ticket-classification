@@ -1,3 +1,5 @@
+import json
+
 import joblib
 import numpy as np
 import pandas as pd
@@ -41,8 +43,6 @@ def main() -> None:
     )
 
     calibration_path = METRICS_DIR / "baseline_calibration_metrics.json"
-    import json
-
     with open(calibration_path, "w", encoding="utf-8") as f:
         json.dump(calibration, f, indent=4)
 

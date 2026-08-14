@@ -1,10 +1,9 @@
-import hashlib
 import json
-from typing import Any
 
 import numpy as np
 import pandas as pd
 
+from src.hashing import calculate_file_sha256
 from src.paths import METRICS_DIR, ROOT_DIR
 from src.routing_utils import compute_bootstrap_ci
 
@@ -14,37 +13,23 @@ THRESHOLD_PATH = METRICS_DIR / "selected_threshold.json"
 MODEL_PATH = ROOT_DIR / "artifacts" / "cnn" / "textcnn.pt"
 
 
-def calculate_sha256(path: Any) -> Any:
-    hasher = hashlib.sha256()
-    with open(path, "rb") as file:
-        for chunk in iter(lambda: file.read(1024 * 1024), b""):
-            hasher.update(chunk)
-    return hasher.hexdigest()
-
-
 def main() -> None:
     if not INPUT_PATH.exists():
         raise FileNotFoundError(f"Input predictions not found: {INPUT_PATH}")
 
     results = pd.read_csv(INPUT_PATH)
-
-    # Fine threshold grid: 0.10 to 0.99 with 0.01 step
     thresholds = np.round(np.arange(0.10, 1.00, 0.01), 2)
     rows = []
 
     for threshold in thresholds:
-        auto_routed_mask = results["confidence"] >= threshold
-        routed = results[auto_routed_mask]
+        routed = results[results["confidence"] >= threshold]
         coverage = len(routed) / len(results)
-        routed_accuracy = routed["correct"].mean() if len(routed) > 0 else 0.0
-        manual_review_rate = 1.0 - coverage
-
         rows.append(
             {
                 "threshold": round(float(threshold), 2),
                 "coverage": float(coverage),
-                "auto_routed_accuracy": float(routed_accuracy),
-                "manual_review_rate": float(manual_review_rate),
+                "auto_routed_accuracy": float(routed["correct"].mean()) if len(routed) > 0 else 0.0,
+                "manual_review_rate": float(1.0 - coverage),
             }
         )
 
@@ -62,54 +47,48 @@ def main() -> None:
         threshold_results["auto_routed_accuracy"] >= TARGET_ACCURACY
     ].sort_values("coverage", ascending=False)
 
-    selected = None
-    selected_acc_ci = None
-    selected_cov_ci = None
+    selected_row = None
+    selected_acc_ci: list[float] = []
+    selected_cov_ci: list[float] = []
 
     for _, candidate in candidates.iterrows():
-        candidate_threshold = float(candidate["threshold"])
-
-        acc_ci, cov_ci = compute_bootstrap_ci(
-            results,
-            candidate_threshold,
-        )
-
+        acc_ci, cov_ci = compute_bootstrap_ci(results, float(candidate["threshold"]))
         if acc_ci[0] >= TARGET_ACCURACY:
-            selected = candidate
+            selected_row = candidate
             selected_acc_ci = acc_ci
             selected_cov_ci = cov_ci
             break
 
-    if selected is not None:
-        selected_threshold = float(selected["threshold"])
-        acc_ci = selected_acc_ci
-        cov_ci = selected_cov_ci
+    if selected_row is not None:
+        selected_threshold = float(selected_row["threshold"])
 
         print("\nSelected Threshold")
         print("=" * 75)
         print(f"Threshold:            {selected_threshold:.2f}")
         print(
-            f"Coverage:             {selected['coverage']:.2%} (95% CI: [{cov_ci[0]:.2%}, {cov_ci[1]:.2%}])"  # type: ignore
+            f"Coverage:             {selected_row['coverage']:.2%} "
+            f"(95% CI: [{selected_cov_ci[0]:.2%}, {selected_cov_ci[1]:.2%}])"
         )
         print(
-            f"Auto-routed accuracy: {selected['auto_routed_accuracy']:.2%} (95% CI: [{acc_ci[0]:.2%}, {acc_ci[1]:.2%}])"  # type: ignore
+            f"Auto-routed accuracy: {selected_row['auto_routed_accuracy']:.2%} "
+            f"(95% CI: [{selected_acc_ci[0]:.2%}, {selected_acc_ci[1]:.2%}])"
         )
-        print(f"Manual review rate:   {selected['manual_review_rate']:.2%}")
+        print(f"Manual review rate:   {selected_row['manual_review_rate']:.2%}")
 
-        threshold_config = {
+        threshold_config: dict[str, object] = {
             "threshold": selected_threshold,
             "target_accuracy": TARGET_ACCURACY,
             "selection_rule": (
                 "maximize_coverage_subject_to_95pct_ci_lower_bound_gte_target_accuracy"
             ),
-            "model_sha256": calculate_sha256(MODEL_PATH),
-            "validation_coverage": float(selected["coverage"]),
-            "validation_auto_routed_accuracy": float(selected["auto_routed_accuracy"]),
-            "validation_accuracy_ci_lower": float(acc_ci[0]),  # type: ignore
-            "validation_manual_review_rate": float(selected["manual_review_rate"]),
+            "model_sha256": calculate_file_sha256(MODEL_PATH),
+            "validation_coverage": float(selected_row["coverage"]),
+            "validation_auto_routed_accuracy": float(selected_row["auto_routed_accuracy"]),
+            "validation_accuracy_ci_lower": selected_acc_ci[0],
+            "validation_manual_review_rate": float(selected_row["manual_review_rate"]),
             "bootstrap_ci_95": {
-                "auto_routed_accuracy": acc_ci,
-                "coverage": cov_ci,
+                "auto_routed_accuracy": selected_acc_ci,
+                "coverage": selected_cov_ci,
             },
         }
 
@@ -120,8 +99,9 @@ def main() -> None:
 
     else:
         best = threshold_results.loc[threshold_results["auto_routed_accuracy"].idxmax()]
+
         print(
-            "\nNo threshold satisfied the routing requirement:"
+            f"\nNo threshold satisfied the routing requirement:"
             f" lower 95% accuracy CI >= {TARGET_ACCURACY:.0%}."
         )
         print("\nBest validation result")

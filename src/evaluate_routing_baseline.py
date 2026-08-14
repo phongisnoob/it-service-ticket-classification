@@ -5,21 +5,11 @@ import numpy as np
 import pandas as pd
 
 from src.data import load_data, split_data
-from src.paths import (
-    BASELINE_MODEL_PATH as MODEL_PATH,
-)
-from src.paths import (
-    METRICS_DIR,
-)
+from src.paths import BASELINE_MODEL_PATH as MODEL_PATH
+from src.paths import METRICS_DIR
 from src.routing_utils import compute_bootstrap_ci
 
-# ============================================================
-# Paths
-# ============================================================
-
-
 THRESHOLD_PATH = METRICS_DIR / "baseline_selected_threshold.json"
-
 OUTPUT_PATH = METRICS_DIR / "baseline_routing_metrics.json"
 
 

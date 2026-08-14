@@ -12,22 +12,20 @@ from torch.utils.data import DataLoader
 from src.cnn_data import TicketDataset
 from src.data import load_data, split_data
 from src.evaluate import calculate_calibration_metrics, calculate_metrics
-from src.paths import ARTIFACT_DIR, FIGURE_DIR, METRICS_DIR
+from src.paths import FIGURE_DIR, METRICS_DIR, ROOT_DIR
 from src.textcnn import TextCNN
 
-# ============================================================
-# Paths
-# ============================================================
+CNN_DIR = ROOT_DIR / "artifacts" / "cnn"
 
 
 def main() -> None:
-    with open(ARTIFACT_DIR / "vocab.json", encoding="utf-8") as f:
+    with open(CNN_DIR / "vocab.json", encoding="utf-8") as f:
         vocab = json.load(f)
 
-    with open(ARTIFACT_DIR / "labels.json", encoding="utf-8") as f:
+    with open(CNN_DIR / "labels.json", encoding="utf-8") as f:
         labels = json.load(f)
 
-    with open(ARTIFACT_DIR / "config.json", encoding="utf-8") as f:
+    with open(CNN_DIR / "config.json", encoding="utf-8") as f:
         config = json.load(f)
 
     label_to_id = {label: index for index, label in enumerate(labels)}
@@ -38,10 +36,10 @@ def main() -> None:
     y_test = [label_to_id[label] for label in test_df["Topic_group"]]
 
     test_dataset = TicketDataset(
-        texts=test_df["Document"],
+        texts=test_df["Document"].tolist(),
         labels=y_test,
         vocab=vocab,
-        max_length=config["max_length"],
+        max_length=int(config["max_length"]),
     )
 
     test_loader = DataLoader(
@@ -62,7 +60,7 @@ def main() -> None:
     ).to(device)
 
     state_dict = torch.load(
-        ARTIFACT_DIR / "textcnn.pt",
+        CNN_DIR / "textcnn.pt",
         map_location=device,
         weights_only=True,
     )

@@ -10,17 +10,7 @@ from src.evaluate import calculate_calibration_metrics, calculate_metrics
 from src.paths import METRICS_DIR, ROOT_DIR
 from src.textcnn import TextCNN
 
-# ============================================================
-# Paths
-# ============================================================
-
-
 CNN_DIR = ROOT_DIR / "artifacts" / "cnn"
-
-
-# ============================================================
-# Load vocabulary
-# ============================================================
 
 
 def main() -> None:
@@ -40,10 +30,10 @@ def main() -> None:
     y_val = [label_to_id[label] for label in val_df["Topic_group"]]
 
     val_dataset = TicketDataset(
-        texts=val_df["Document"],
+        texts=val_df["Document"].tolist(),
         labels=y_val,
         vocab=vocab,
-        max_length=config["max_length"],
+        max_length=int(config["max_length"]),
     )
 
     val_loader = DataLoader(
