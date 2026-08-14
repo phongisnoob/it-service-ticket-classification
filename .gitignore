@@ -47,3 +47,16 @@ reports/private/
 
 # Local development artifacts
 monkeytype.sqlite3
+
+# Temporary / local developer files
+*.bak
+*.sqlite3
+.env
+
+# Experiment tracking
+mlruns/
+mlartifacts/
+mlflow.db
+
+# Benchmark/monitoring temporary outputs
+reports/private/
