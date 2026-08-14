@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import TypedDict, Any
+from typing import TypedDict
 
 import joblib
 import numpy as np
@@ -164,6 +164,7 @@ class CNNPredictor:
             self.config: CNNConfig = json.load(f)
 
         import torch
+
         from src.textcnn import TextCNN
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -187,6 +188,7 @@ class CNNPredictor:
 
     def predict(self, text: str) -> PredictionResult:
         import torch
+
         from src.cnn_data import encode_text
 
         token_ids = encode_text(text, self.vocab, max_length=self.config["max_length"])

@@ -12,9 +12,11 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 COPY requirements*.txt .
 RUN if [ "$MODEL_BACKEND" = "cnn" ]; then \
-        pip install --no-cache-dir -r requirements-cnn.txt; \
+        pip install --no-cache-dir --require-hashes -r requirements-cnn.txt && \
+        pip install --no-cache-dir --no-deps torch==2.13.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu && \
+        python -m pip check; \
     else \
-        pip install --no-cache-dir -r requirements.txt; \
+        pip install --no-cache-dir --require-hashes -r requirements.txt; \
     fi
 
 COPY --chown=appuser:appuser app/ app/

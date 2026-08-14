@@ -22,7 +22,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          pip install --require-hashes -r requirements-dev.txt
+          pip install --no-deps torch==2.13.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+          python -m pip check
 
       - name: Lint with ruff
         run: ruff check .
@@ -50,7 +52,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          pip install --require-hashes -r requirements-dev.txt
+          pip install --no-deps torch==2.13.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+          python -m pip check
 
       - name: Configure DVC remote credentials
         run: |
