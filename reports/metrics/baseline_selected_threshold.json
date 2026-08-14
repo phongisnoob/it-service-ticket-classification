@@ -2,7 +2,7 @@
     "threshold": 0.54,
     "target_accuracy": 0.9,
     "selection_rule": "maximize_coverage_subject_to_95pct_ci_lower_bound_gte_target_accuracy",
-    "model_sha256": "71ccc56c6a6d0fa6c55f50a2703eb6f8e8df2c3192814c623d757609c039e8e9",
+    "model_sha256": "60e234864a320abf49deaea34c7730e230b83dae17956092144ca0af512a1ceb",
     "validation_coverage": 0.8677536231884058,
     "validation_auto_routed_accuracy": 0.9078207804721374,
     "validation_accuracy_ci_lower": 0.9004156768518408,

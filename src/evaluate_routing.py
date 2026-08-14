@@ -3,6 +3,7 @@ import json
 import pandas as pd
 
 from src.paths import METRICS_DIR
+from src.tracking import log_metrics, start_run
 
 TEST_PREDICTIONS_PATH = METRICS_DIR / "cnn_test_predictions.csv"
 THRESHOLD_PATH = METRICS_DIR / "selected_threshold.json"
@@ -60,6 +61,15 @@ def main() -> None:
 
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(routing_metrics, f, indent=4)
+
+    with start_run(run_name="evaluate_routing_cnn", model_backend="cnn"):
+        log_metrics({
+            "test_routing_threshold": threshold,
+            "test_overall_accuracy": float(overall_accuracy),
+            "test_auto_route_coverage": float(coverage),
+            "test_manual_review_rate": float(manual_review_rate),
+            "test_auto_routed_accuracy": float(selective_accuracy),
+        })
 
     print(f"\nSaved to: {OUTPUT_PATH}")
 

@@ -7,6 +7,7 @@ import subprocess
 import numpy as np
 import torch
 import torch.nn as nn
+import yaml
 from sklearn.metrics import f1_score
 from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import DataLoader
@@ -16,22 +17,26 @@ from src.data import load_data, split_data
 from src.hashing import calculate_file_sha256
 from src.paths import ARTIFACT_DIR, DATA_PATH, ROOT_DIR
 from src.textcnn import TextCNN
+from src.tracking import log_artifact, log_dict_as_artifact, log_metrics, log_params, start_run
 
 CNN_DIR = ARTIFACT_DIR / "cnn"
 
-SEED = 42
-MAX_VOCAB_SIZE = 30000
-MIN_FREQ = 2
+with open(ROOT_DIR / "params.yaml", "r") as f:
+    cnn_params = yaml.safe_load(f)["cnn"]
 
-EMBEDDING_DIM = 128
-NUM_FILTERS = 128
-KERNEL_SIZES = [3, 4, 5]
-DROPOUT = 0.3
+SEED = cnn_params["seed"]
+MAX_VOCAB_SIZE = cnn_params["max_vocab_size"]
+MIN_FREQ = cnn_params["min_freq"]
 
-BATCH_SIZE = 64
-LEARNING_RATE = 1e-3
-MAX_EPOCHS = 15
-PATIENCE = 3
+EMBEDDING_DIM = cnn_params["embedding_dim"]
+NUM_FILTERS = cnn_params["num_filters"]
+KERNEL_SIZES = cnn_params["kernel_sizes"]
+DROPOUT = cnn_params["dropout"]
+
+BATCH_SIZE = cnn_params["batch_size"]
+LEARNING_RATE = cnn_params["learning_rate"]
+MAX_EPOCHS = cnn_params["max_epochs"]
+PATIENCE = cnn_params["patience"]
 
 
 def set_seed(seed: int) -> None:
@@ -236,6 +241,12 @@ def train_cnn() -> None:
     }
     with open(CNN_DIR / "artifact_manifest.json", "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=4)
+
+    with start_run(run_name="train_cnn", model_backend="cnn"):
+        log_params(cnn_params)
+        log_metrics({"best_val_macro_f1": best_val_f1})
+        log_artifact(str(model_path), "artifacts/cnn")
+        log_dict_as_artifact(metadata, "cnn_metadata.json")
 
     print(f"\nBest validation Macro-F1: {best_val_f1:.4f}")
     print(f"Best model saved to {model_path} (SHA-256: {model_sha256[:12]}...)")

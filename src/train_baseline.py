@@ -5,6 +5,7 @@ import subprocess
 
 import joblib
 import sklearn
+import yaml
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
@@ -14,6 +15,7 @@ from src.data import load_data, split_data
 from src.evaluate import calculate_metrics
 from src.hashing import calculate_file_sha256
 from src.paths import ARTIFACT_DIR, DATA_PATH, METRICS_DIR, ROOT_DIR
+from src.tracking import log_artifact, log_dict_as_artifact, log_metrics, log_params, start_run
 
 
 def train_baseline() -> tuple[CalibratedClassifierCV, dict[str, float]]:
@@ -25,21 +27,24 @@ def train_baseline() -> tuple[CalibratedClassifierCV, dict[str, float]]:
     X_val = val_df["Document"]
     y_val = val_df["Topic_group"]
 
+    with open(ROOT_DIR / "params.yaml", "r") as f:
+        params = yaml.safe_load(f)["baseline"]
+
     base_pipeline = Pipeline(
         [
             (
                 "tfidf",
                 TfidfVectorizer(
-                    ngram_range=(1, 2),
-                    min_df=2,
-                    max_df=0.98,
+                    ngram_range=tuple(params["ngram_range"]),
+                    min_df=params["min_df"],
+                    max_df=params["max_df"],
                     sublinear_tf=True,
-                    max_features=100_000,
+                    max_features=params["max_features"],
                 ),
             ),
             (
                 "classifier",
-                LogisticRegression(max_iter=2000, class_weight="balanced"),
+                LogisticRegression(max_iter=params["max_iter"], class_weight=params["class_weight"]),
             ),
         ]
     )
@@ -70,6 +75,16 @@ def train_baseline() -> tuple[CalibratedClassifierCV, dict[str, float]]:
     except (subprocess.CalledProcessError, FileNotFoundError):
         git_commit = None
 
+    hyperparameters = {
+        "ngram_range": params["ngram_range"],
+        "min_df": params["min_df"],
+        "max_df": params["max_df"],
+        "max_features": params["max_features"],
+        "max_iter": params["max_iter"],
+        "class_weight": params["class_weight"],
+        "calibration_method": "sigmoid (5-fold CV on training set)",
+    }
+
     metadata: dict[str, object] = {
         "model_backend": "baseline",
         "python_version": platform.python_version(),
@@ -79,15 +94,7 @@ def train_baseline() -> tuple[CalibratedClassifierCV, dict[str, float]]:
         "training_timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "git_commit": git_commit,
         "random_seed": 42,
-        "hyperparameters": {
-            "ngram_range": [1, 2],
-            "min_df": 2,
-            "max_df": 0.98,
-            "max_features": 100000,
-            "max_iter": 2000,
-            "class_weight": "balanced",
-            "calibration_method": "sigmoid (5-fold CV on training set)",
-        },
+        "hyperparameters": hyperparameters,
         "val_metrics": val_metrics,
     }
 
@@ -96,6 +103,12 @@ def train_baseline() -> tuple[CalibratedClassifierCV, dict[str, float]]:
 
     with open(METRICS_DIR / "baseline_val_metrics.json", "w", encoding="utf-8") as f:
         json.dump(val_metrics, f, indent=4)
+
+    with start_run(run_name="train_baseline", model_backend="baseline"):
+        log_params(hyperparameters)
+        log_metrics(val_metrics)
+        log_artifact(str(model_path), "artifacts")
+        log_dict_as_artifact(metadata, "baseline_metadata.json")
 
     print(f"\nModel saved to {model_path} (SHA-256: {model_sha256[:12]}...)")
 

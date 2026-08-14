@@ -1,0 +1,300 @@
+schema: '2.0'
+stages:
+  train_baseline:
+    cmd: python -m src.train_baseline
+    deps:
+    - path: data/raw/all_tickets_processed_improved_v3.csv
+      hash: md5
+      md5: a05aa13d753884547cc46e6f525bfb82
+      size: 14568920
+    - path: src/data.py
+      hash: md5
+      md5: 9a605a2feebea98fc3cae9af1a757fec
+      size: 6825
+    - path: src/train_baseline.py
+      hash: md5
+      md5: f353028557c06d1c50cfebbb87ecb70e
+      size: 4029
+    params:
+      params.yaml:
+        baseline.class_weight: balanced
+        baseline.max_df: 0.98
+        baseline.max_features: 100000
+        baseline.max_iter: 2000
+        baseline.min_df: 2
+        baseline.ngram_range:
+        - 1
+        - 2
+    outs:
+    - path: artifacts/baseline.joblib
+      hash: md5
+      md5: f8bc375ca3122a8ad9ec7f2ece6e202f
+      size: 53099876
+    - path: artifacts/baseline_metadata.json
+      hash: md5
+      md5: dfde86e018e50f5d7863a2b15a3066d7
+      size: 1002
+    - path: reports/metrics/baseline_val_metrics.json
+      hash: md5
+      md5: cfd004e2ad18c2b44b38af47b92d7555
+      size: 202
+  evaluate_val_baseline:
+    cmd: python -m src.evaluate_val_baseline
+    deps:
+    - path: artifacts/baseline.joblib
+      hash: md5
+      md5: f8bc375ca3122a8ad9ec7f2ece6e202f
+      size: 53099876
+    - path: src/evaluate_val_baseline.py
+      hash: md5
+      md5: 3bbdf759e5f40bc12b60752fca62206a
+      size: 1751
+    outs:
+    - path: reports/metrics/baseline_calibration_metrics.json
+      hash: md5
+      md5: 37854e66dc8db0a573b3714783ef393a
+      size: 88
+    - path: reports/metrics/baseline_val_predictions.csv
+      hash: md5
+      md5: 9191d37153573380249986f07ebb5304
+      size: 454426
+  analyze_threshold_baseline:
+    cmd: python -m src.analyze_threshold_baseline
+    deps:
+    - path: reports/metrics/baseline_val_predictions.csv
+      hash: md5
+      md5: 9191d37153573380249986f07ebb5304
+      size: 454426
+    - path: src/analyze_threshold_baseline.py
+      hash: md5
+      md5: 05a3923aa4523a886b7927961fc97398
+      size: 4596
+    outs:
+    - path: reports/metrics/baseline_selected_threshold.json
+      hash: md5
+      md5: 1db105fe8cf046cbd69b12fabd977b59
+      size: 708
+    - path: reports/metrics/baseline_threshold_analysis.csv
+      hash: md5
+      md5: fad68c9f0b8c71c394aaf7b5df8b376a
+      size: 5274
+  evaluate_routing_baseline:
+    cmd: python -m src.evaluate_routing_baseline
+    deps:
+    - path: artifacts/baseline.joblib
+      hash: md5
+      md5: f8bc375ca3122a8ad9ec7f2ece6e202f
+      size: 53099876
+    - path: reports/metrics/baseline_selected_threshold.json
+      hash: md5
+      md5: 1db105fe8cf046cbd69b12fabd977b59
+      size: 708
+    - path: src/evaluate_routing_baseline.py
+      hash: md5
+      md5: 123790403d7d26725d3a4cc65102de83
+      size: 3834
+    outs:
+    - path: reports/metrics/baseline_routing_metrics.json
+      hash: md5
+      md5: 8ffd1f7281d9f8142d507e9ed04ca11f
+      size: 553
+  evaluate_baseline:
+    cmd: python -m src.evaluate_baseline
+    deps:
+    - path: artifacts/baseline.joblib
+      hash: md5
+      md5: f8bc375ca3122a8ad9ec7f2ece6e202f
+      size: 53099876
+    - path: src/evaluate_baseline.py
+      hash: md5
+      md5: f0686269659cf6f720c18441cc6f14aa
+      size: 1188
+    outs:
+    - path: reports/metrics/baseline_metrics.json
+      hash: md5
+      md5: 6a5115305b5ec9f7af1147158c89707f
+      size: 201
+  train_cnn:
+    cmd: python -m src.train_cnn
+    deps:
+    - path: data/raw/all_tickets_processed_improved_v3.csv
+      hash: md5
+      md5: a05aa13d753884547cc46e6f525bfb82
+      size: 14568920
+    - path: src/cnn_data.py
+      hash: md5
+      md5: 2b205484fd103e21589ef80129347a19
+      size: 2226
+    - path: src/data.py
+      hash: md5
+      md5: 9a605a2feebea98fc3cae9af1a757fec
+      size: 6825
+    - path: src/textcnn.py
+      hash: md5
+      md5: 43527d9301da380a670d1943f520ebc7
+      size: 1138
+    - path: src/train_cnn.py
+      hash: md5
+      md5: 0638fcdeb02277a15b4b6e1557b6ec98
+      size: 8920
+    params:
+      params.yaml:
+        cnn.batch_size: 64
+        cnn.dropout: 0.3
+        cnn.embedding_dim: 128
+        cnn.kernel_sizes:
+        - 3
+        - 4
+        - 5
+        cnn.learning_rate: 0.001
+        cnn.max_epochs: 15
+        cnn.max_vocab_size: 30000
+        cnn.min_freq: 2
+        cnn.num_filters: 128
+        cnn.patience: 3
+        cnn.seed: 42
+    outs:
+    - path: artifacts/cnn/artifact_manifest.json
+      hash: md5
+      md5: 07e6235d5e1e3ab87c065060b5be8ba1
+      size: 353
+    - path: artifacts/cnn/cnn_metadata.json
+      hash: md5
+      md5: c34a4340d513e36ee5c7d6b69bf7d800
+      size: 888
+    - path: artifacts/cnn/config.json
+      hash: md5
+      md5: b395aa52ad6085f7d71960f1fc926b6b
+      size: 281
+    - path: artifacts/cnn/labels.json
+      hash: md5
+      md5: 9cbe746682a4fe71b291d4232ccc2720
+      size: 148
+    - path: artifacts/cnn/textcnn.pt
+      hash: md5
+      md5: 0294a133db1674a26841a60ddcf5ee90
+      size: 5235593
+    - path: artifacts/cnn/vocab.json
+      hash: md5
+      md5: 2ff7c81c6ca74af1a0ca60869486effe
+      size: 148126
+  evaluate_val_cnn:
+    cmd: python -m src.evaluate_val_cnn
+    deps:
+    - path: artifacts/cnn/textcnn.pt
+      hash: md5
+      md5: 0294a133db1674a26841a60ddcf5ee90
+      size: 5235593
+    - path: src/evaluate_val_cnn.py
+      hash: md5
+      md5: 845afbb50018de234fcf5bdd953661fb
+      size: 3877
+    outs:
+    - path: reports/metrics/cnn_val_predictions.csv
+      hash: md5
+      md5: dad59a0dff699f8e53acd5fe70b7c906
+      size: 450893
+  analyze_threshold_cnn:
+    cmd: python -m src.analyze_threshold_cnn
+    deps:
+    - path: reports/metrics/cnn_val_predictions.csv
+      hash: md5
+      md5: dad59a0dff699f8e53acd5fe70b7c906
+      size: 450893
+    - path: src/analyze_threshold_cnn.py
+      hash: md5
+      md5: 439832182e4959a5b60ec4a4bff88947
+      size: 4519
+    outs:
+    - path: reports/metrics/selected_threshold.json
+      hash: md5
+      md5: 8ba4bede0099e0dbfe7123332c0b807b
+      size: 710
+    - path: reports/metrics/threshold_analysis.csv
+      hash: md5
+      md5: 1c8c93d9c3b2e356cc31c41b9401ffb4
+      size: 5409
+  evaluate_cnn:
+    cmd: python -m src.evaluate_cnn
+    deps:
+    - path: artifacts/cnn/textcnn.pt
+      hash: md5
+      md5: 0294a133db1674a26841a60ddcf5ee90
+      size: 5235593
+    - path: src/evaluate_cnn.py
+      hash: md5
+      md5: 187b883671fb7d9b687a34f3555a3149
+      size: 4383
+    outs:
+    - path: reports/metrics/cnn_metrics.json
+      hash: md5
+      md5: 429ed715893c0583eb70c4652ec852f8
+      size: 286
+    - path: reports/metrics/cnn_test_predictions.csv
+      hash: md5
+      md5: 2906a68becb61b3259436c5ed7d4157f
+      size: 450998
+  evaluate_routing_cnn:
+    cmd: python -m src.evaluate_routing
+    deps:
+    - path: reports/metrics/cnn_test_predictions.csv
+      hash: md5
+      md5: 2906a68becb61b3259436c5ed7d4157f
+      size: 450998
+    - path: reports/metrics/selected_threshold.json
+      hash: md5
+      md5: 8ba4bede0099e0dbfe7123332c0b807b
+      size: 710
+    - path: src/evaluate_routing.py
+      hash: md5
+      md5: 3b7014dcadaaebeed9a2bb054aaac4ff
+      size: 2942
+    outs:
+    - path: reports/metrics/routing_metrics.json
+      hash: md5
+      md5: e6a3b6591a5aefc99b014e8facdf1aed
+      size: 308
+  compare_models:
+    cmd: python -m src.compare_models
+    deps:
+    - path: reports/metrics/baseline_calibration_metrics.json
+      hash: md5
+      md5: 37854e66dc8db0a573b3714783ef393a
+      size: 88
+    - path: reports/metrics/baseline_metrics.json
+      hash: md5
+      md5: 6a5115305b5ec9f7af1147158c89707f
+      size: 201
+    - path: reports/metrics/cnn_metrics.json
+      hash: md5
+      md5: 429ed715893c0583eb70c4652ec852f8
+      size: 286
+    - path: src/compare_models.py
+      hash: md5
+      md5: 09b24432c8d0875bac1a6f004c60f429
+      size: 1316
+    outs:
+    - path: reports/metrics/model_comparison.csv
+      hash: md5
+      md5: 1c6e63f884ab32be9ad9bb5fc69f209c
+      size: 378
+  select_model:
+    cmd: python -m src.select_model
+    deps:
+    - path: reports/metrics/baseline_routing_metrics.json
+      hash: md5
+      md5: 8ffd1f7281d9f8142d507e9ed04ca11f
+      size: 553
+    - path: reports/metrics/routing_metrics.json
+      hash: md5
+      md5: e6a3b6591a5aefc99b014e8facdf1aed
+      size: 308
+    - path: src/select_model.py
+      hash: md5
+      md5: 746b18bcfb3f10d1ae635b2af2c4976d
+      size: 3821
+    outs:
+    - path: reports/metrics/model_selection.json
+      hash: md5
+      md5: 7ef793a714fedb7b213efdf1ae2b352b
+      size: 1383

@@ -47,6 +47,9 @@ reports/private/
 
 # Local development artifacts
 monkeytype.sqlite3
+mlruns/
+mlruns.db
+.mlflow_run_id_*
 
 # Temporary / local developer files
 *.bak

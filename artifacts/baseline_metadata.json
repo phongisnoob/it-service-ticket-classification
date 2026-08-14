@@ -3,9 +3,9 @@
     "python_version": "3.14.4",
     "scikit_learn_version": "1.9.0",
     "dataset_sha256": "044fdace33fa564e1e60453f2941dafc95539c99878b0d32746950394b9dd4d4",
-    "model_sha256": "71ccc56c6a6d0fa6c55f50a2703eb6f8e8df2c3192814c623d757609c039e8e9",
-    "training_timestamp": "2026-08-13T10:40:33.972104+00:00",
-    "git_commit": "3dee28fd4fe4993a79cda5be0b755a5cd5050427",
+    "model_sha256": "60e234864a320abf49deaea34c7730e230b83dae17956092144ca0af512a1ceb",
+    "training_timestamp": "2026-08-14T04:24:05.562158+00:00",
+    "git_commit": "fb9e76d4d82adcbed7d5ebb95f71495821d3f762",
     "random_seed": 42,
     "hyperparameters": {
         "ngram_range": [

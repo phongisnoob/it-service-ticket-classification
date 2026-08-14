@@ -8,6 +8,7 @@ from src.data import load_data, split_data
 from src.paths import BASELINE_MODEL_PATH as MODEL_PATH
 from src.paths import METRICS_DIR
 from src.routing_utils import compute_bootstrap_ci
+from src.tracking import log_metrics, start_run
 
 THRESHOLD_PATH = METRICS_DIR / "baseline_selected_threshold.json"
 OUTPUT_PATH = METRICS_DIR / "baseline_routing_metrics.json"
@@ -86,6 +87,15 @@ def main() -> None:
 
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=4)
+
+    with start_run(run_name="evaluate_routing_baseline", model_backend="baseline"):
+        log_metrics({
+            "test_routing_threshold": threshold,
+            "test_overall_accuracy": float(overall_accuracy),
+            "test_auto_route_coverage": float(coverage),
+            "test_manual_review_rate": float(manual_review_rate),
+            "test_auto_routed_accuracy": float(auto_routed_accuracy),
+        })
 
     print("\nSaved to:", OUTPUT_PATH)
 

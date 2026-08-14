@@ -1,0 +1,20 @@
+baseline:
+  ngram_range: [1, 2]
+  min_df: 2
+  max_df: 0.98
+  max_features: 100000
+  max_iter: 2000
+  class_weight: balanced
+
+cnn:
+  seed: 42
+  max_vocab_size: 30000
+  min_freq: 2
+  embedding_dim: 128
+  num_filters: 128
+  kernel_sizes: [3, 4, 5]
+  dropout: 0.3
+  batch_size: 64
+  learning_rate: 0.001
+  max_epochs: 15
+  patience: 3

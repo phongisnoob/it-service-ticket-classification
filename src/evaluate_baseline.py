@@ -11,6 +11,7 @@ from src.evaluate import (
     print_report,
 )
 from src.paths import ARTIFACT_DIR, METRICS_DIR
+from src.tracking import log_metrics, start_run
 
 MODEL_PATH = ARTIFACT_DIR / "baseline.joblib"
 
@@ -46,10 +47,10 @@ def main() -> None:
             indent=4,
         )
 
-    print(
-        "Saved test metrics to:",
-        METRICS_DIR / "baseline_metrics.json",
-    )
+    with start_run(run_name="evaluate_baseline", model_backend="baseline"):
+        log_metrics({"test_" + k: v for k, v in metrics.items()})
+
+    print("Saved test metrics to:", METRICS_DIR / "baseline_metrics.json")
 
 
 if __name__ == "__main__":

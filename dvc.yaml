@@ -1,0 +1,161 @@
+stages:
+  train_baseline:
+    cmd: python -m src.train_baseline
+    deps:
+      - data/raw/all_tickets_processed_improved_v3.csv
+      - src/train_baseline.py
+      - src/data.py
+    params:
+      - baseline.ngram_range
+      - baseline.min_df
+      - baseline.max_df
+      - baseline.max_features
+      - baseline.max_iter
+      - baseline.class_weight
+    outs:
+      - artifacts/baseline.joblib
+      - artifacts/baseline_metadata.json:
+          cache: false
+    metrics:
+      - reports/metrics/baseline_val_metrics.json:
+          cache: false
+
+  evaluate_val_baseline:
+    cmd: python -m src.evaluate_val_baseline
+    deps:
+      - artifacts/baseline.joblib
+      - src/evaluate_val_baseline.py
+    outs:
+      - reports/metrics/baseline_val_predictions.csv:
+          cache: false
+    metrics:
+      - reports/metrics/baseline_calibration_metrics.json:
+          cache: false
+
+  analyze_threshold_baseline:
+    cmd: python -m src.analyze_threshold_baseline
+    deps:
+      - reports/metrics/baseline_val_predictions.csv
+      - src/analyze_threshold_baseline.py
+    outs:
+      - reports/metrics/baseline_threshold_analysis.csv:
+          cache: false
+    metrics:
+      - reports/metrics/baseline_selected_threshold.json:
+          cache: false
+
+  evaluate_baseline:
+    cmd: python -m src.evaluate_baseline
+    deps:
+      - artifacts/baseline.joblib
+      - src/evaluate_baseline.py
+    metrics:
+      - reports/metrics/baseline_metrics.json:
+          cache: false
+
+  evaluate_routing_baseline:
+    cmd: python -m src.evaluate_routing_baseline
+    deps:
+      - artifacts/baseline.joblib
+      - reports/metrics/baseline_selected_threshold.json
+      - src/evaluate_routing_baseline.py
+    metrics:
+      - reports/metrics/baseline_routing_metrics.json:
+          cache: false
+
+  train_cnn:
+    cmd: python -m src.train_cnn
+    deps:
+      - data/raw/all_tickets_processed_improved_v3.csv
+      - src/train_cnn.py
+      - src/data.py
+      - src/cnn_data.py
+      - src/textcnn.py
+    params:
+      - cnn.seed
+      - cnn.max_vocab_size
+      - cnn.min_freq
+      - cnn.embedding_dim
+      - cnn.num_filters
+      - cnn.kernel_sizes
+      - cnn.dropout
+      - cnn.batch_size
+      - cnn.learning_rate
+      - cnn.max_epochs
+      - cnn.patience
+    outs:
+      - artifacts/cnn/textcnn.pt
+      - artifacts/cnn/vocab.json:
+          cache: false
+      - artifacts/cnn/labels.json:
+          cache: false
+      - artifacts/cnn/config.json:
+          cache: false
+      - artifacts/cnn/cnn_metadata.json:
+          cache: false
+      - artifacts/cnn/artifact_manifest.json:
+          cache: false
+
+  evaluate_val_cnn:
+    cmd: python -m src.evaluate_val_cnn
+    deps:
+      - artifacts/cnn/textcnn.pt
+      - src/evaluate_val_cnn.py
+    outs:
+      - reports/metrics/cnn_val_predictions.csv:
+          cache: false
+
+  analyze_threshold_cnn:
+    cmd: python -m src.analyze_threshold_cnn
+    deps:
+      - reports/metrics/cnn_val_predictions.csv
+      - src/analyze_threshold_cnn.py
+    outs:
+      - reports/metrics/threshold_analysis.csv:
+          cache: false
+    metrics:
+      - reports/metrics/selected_threshold.json:
+          cache: false
+
+  evaluate_cnn:
+    cmd: python -m src.evaluate_cnn
+    deps:
+      - artifacts/cnn/textcnn.pt
+      - src/evaluate_cnn.py
+    outs:
+      - reports/metrics/cnn_test_predictions.csv:
+          cache: false
+    metrics:
+      - reports/metrics/cnn_metrics.json:
+          cache: false
+
+  evaluate_routing_cnn:
+    cmd: python -m src.evaluate_routing
+    deps:
+      - reports/metrics/cnn_test_predictions.csv
+      - reports/metrics/selected_threshold.json
+      - src/evaluate_routing.py
+    metrics:
+      - reports/metrics/routing_metrics.json:
+          cache: false
+
+  compare_models:
+    cmd: python -m src.compare_models
+    deps:
+      - reports/metrics/baseline_metrics.json
+      - reports/metrics/baseline_calibration_metrics.json
+      - reports/metrics/cnn_metrics.json
+      - src/compare_models.py
+    outs:
+      - reports/metrics/model_comparison.csv:
+          cache: false
+
+  select_model:
+    cmd: python -m src.select_model
+    deps:
+      - reports/metrics/baseline_routing_metrics.json
+      - reports/metrics/routing_metrics.json
+      - src/select_model.py
+    metrics:
+      - reports/metrics/model_selection.json:
+          cache: false

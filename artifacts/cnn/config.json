@@ -1,5 +1,5 @@
 {
-  "max_length": 100,
+  "max_length": 136,
   "embedding_dim": 128,
   "num_filters": 128,
   "kernel_sizes": [
@@ -8,5 +8,10 @@
     5
   ],
   "dropout": 0.3,
-  "num_classes": 8
+  "num_classes": 8,
+  "training_truncation_rate": 0.04996266985217261,
+  "p50": 26.0,
+  "p90": 90.0,
+  "p95": 136.0,
+  "p99": 283.0
 }

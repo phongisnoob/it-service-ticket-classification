@@ -1,20 +1,20 @@
 {
-    "threshold": 0.76,
+    "threshold": 0.67,
     "target_accuracy": 0.9,
     "selection_rule": "maximize_coverage_subject_to_95pct_ci_lower_bound_gte_target_accuracy",
-    "model_sha256": "08854195cbea74fae33aff769d9685027409a23a0ce298dcd36e1ac3b0b1d1ba",
-    "validation_coverage": 0.8355629877369007,
-    "validation_auto_routed_accuracy": 0.9086057371581054,
-    "validation_accuracy_ci_lower": 0.9012628357574821,
-    "validation_manual_review_rate": 0.16443701226309926,
+    "model_sha256": "35bea424be32250af1033785b63263519bba5e8b4bbad061f15f29f9703dcd9f",
+    "validation_coverage": 0.8499163879598662,
+    "validation_auto_routed_accuracy": 0.9088375143466142,
+    "validation_accuracy_ci_lower": 0.9015532172514785,
+    "validation_manual_review_rate": 0.15008361204013376,
     "bootstrap_ci_95": {
         "auto_routed_accuracy": [
-            0.9012628357574821,
-            0.9159868254663452
+            0.9015532172514785,
+            0.9164228413860948
         ],
         "coverage": [
-            0.8265015328874025,
-            0.8436489687848384
+            0.8414158305462653,
+            0.8578595317725752
         ]
     }
 }

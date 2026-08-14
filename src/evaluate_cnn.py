@@ -15,6 +15,7 @@ from src.data import load_data, split_data
 from src.evaluate import calculate_calibration_metrics, calculate_metrics
 from src.paths import FIGURE_DIR, METRICS_DIR, ROOT_DIR
 from src.textcnn import TextCNN
+from src.tracking import log_metrics, start_run
 
 CNN_DIR = ROOT_DIR / "artifacts" / "cnn"
 
@@ -111,6 +112,9 @@ def main() -> None:
 
     with open(METRICS_DIR / "cnn_metrics.json", "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=4)
+
+    with start_run(run_name="evaluate_cnn", model_backend="cnn"):
+        log_metrics({"test_" + k: v for k, v in metrics.items()})
 
     results = pd.DataFrame(
         {

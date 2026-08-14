@@ -1,0 +1,33 @@
+.git
+.gitignore
+.venv
+.pytest_cache
+.ruff_cache
+.mypy_cache
+__pycache__
+*.pyc
+tests/
+notebook/
+data/
+# Include model files and runtime metadata in the image
+artifacts/.mlflow_run_id_*
+
+# Include only report files required during inference
+reports/*
+!reports/metrics/
+reports/metrics/*
+!reports/metrics/*.json
+!reports/data/
+reports/data/*
+!reports/data/data_manifest.json
+mlruns/
+.dvc/
+.dvcignore
+dvc.yaml
+dvc.lock
+params.yaml
+GEMINI.md
+README.md
+requirements-mlops.txt
+requirements-cuda.txt
+pyproject.toml
