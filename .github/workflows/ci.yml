@@ -58,8 +58,8 @@ jobs:
 
       - name: Configure DVC remote credentials
         run: |
-          dvc remote modify dagshub --local user phongisnoob
-          dvc remote modify dagshub --local password "$DAGSHUB_TOKEN"
+          dvc remote modify dagshub --local access_key_id "$DAGSHUB_TOKEN"
+          dvc remote modify dagshub --local secret_access_key "$DAGSHUB_TOKEN"
 
       - name: Pull DVC artifacts
         run: |
@@ -144,12 +144,12 @@ jobs:
       - name: Install DVC
         run: |
           python -m pip install --upgrade pip
-          pip install dvc[webdav] dvc-webdav
+          pip install dvc[s3] dvc-s3
 
       - name: Configure DVC and pull artifacts
         run: |
-          dvc remote modify dagshub --local user phongisnoob
-          dvc remote modify dagshub --local password "$DAGSHUB_TOKEN"
+          dvc remote modify dagshub --local access_key_id "$DAGSHUB_TOKEN"
+          dvc remote modify dagshub --local secret_access_key "$DAGSHUB_TOKEN"
           dvc pull artifacts/baseline.joblib artifacts/cnn/textcnn.pt \
             artifacts/cnn/vocab.json artifacts/cnn/labels.json \
             artifacts/cnn/config.json artifacts/cnn/artifact_manifest.json \

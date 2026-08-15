@@ -1,4 +1,5 @@
 [core]
     remote = dagshub
 ['remote "dagshub"']
-    url = https://dagshub.com/phongisnoob/it-service-ticket-classification.dvc
+    url = s3://dvc
+    endpointurl = https://dagshub.com/phongisnoob/it-service-ticket-classification.s3
