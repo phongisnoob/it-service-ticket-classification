@@ -62,6 +62,9 @@ jobs:
           dvc remote modify dagshub --local secret_access_key "$DAGSHUB_TOKEN"
 
       - name: Pull DVC artifacts
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.DAGSHUB_TOKEN }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DAGSHUB_TOKEN }}
         run: |
           dvc pull artifacts/baseline.joblib artifacts/cnn/textcnn.pt \
             artifacts/cnn/vocab.json artifacts/cnn/labels.json \
@@ -147,6 +150,9 @@ jobs:
           pip install dvc[s3] dvc-s3
 
       - name: Configure DVC and pull artifacts
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.DAGSHUB_TOKEN }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DAGSHUB_TOKEN }}
         run: |
           dvc remote modify dagshub --local access_key_id "$DAGSHUB_TOKEN"
           dvc remote modify dagshub --local secret_access_key "$DAGSHUB_TOKEN"
