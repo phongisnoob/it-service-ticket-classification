@@ -10,6 +10,14 @@ from src.paths import DATA_PATH, REPORT_DATA_DIR
 
 
 def normalize_text(text: str) -> str:
+    """Normalize text by lowercasing, stripping whitespace, and collapsing spaces.
+
+    Args:
+        text: Raw input text.
+
+    Returns:
+        Normalized text string.
+    """
     return re.sub(r"\s+", " ", str(text).lower().strip())
 
 

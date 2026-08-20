@@ -1,3 +1,5 @@
+"""Dataset and vocabulary utilities for CNN-based text classification."""
+
 from collections import Counter
 
 import torch
@@ -8,6 +10,14 @@ UNK_TOKEN = "<UNK>"
 
 
 def tokenize(text: str) -> list[str]:
+    """Tokenize text by lowercasing and splitting on whitespace.
+
+    Args:
+        text: Input text to tokenize.
+
+    Returns:
+        List of lowercase tokens.
+    """
     return str(text).lower().split()
 
 
@@ -50,6 +60,12 @@ def encode_text(text: str, vocab: dict[str, int], max_length: int = 100) -> list
 
 
 class TicketDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
+    """PyTorch Dataset for IT ticket text classification.
+
+    Encodes text inputs using a fixed vocabulary and returns padded sequences
+    with corresponding labels for CNN training and evaluation.
+    """
+
     def __init__(
         self,
         texts: list[str],
@@ -57,15 +73,32 @@ class TicketDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         vocab: dict[str, int],
         max_length: int = 100,
     ) -> None:
+        """Initialize the dataset.
+
+        Args:
+            texts: List of input text strings.
+            labels: List of integer class labels.
+            vocab: Vocabulary mapping tokens to indices.
+            max_length: Maximum sequence length for padding/truncation.
+        """
         self.texts = texts
         self.labels = labels
         self.vocab = vocab
         self.max_length = max_length
 
     def __len__(self) -> int:
+        """Return the number of samples in the dataset."""
         return len(self.texts)
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """Get a single sample from the dataset.
+
+        Args:
+            index: Index of the sample to retrieve.
+
+        Returns:
+            Tuple of (encoded_text_tensor, label_tensor).
+        """
         x = torch.tensor(
             encode_text(self.texts[index], self.vocab, self.max_length), dtype=torch.long
         )

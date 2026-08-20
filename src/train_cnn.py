@@ -58,6 +58,19 @@ def train_one_epoch(
     device: torch.device,
     dataset_size: int,
 ) -> float:
+    """Train the model for one epoch.
+
+    Args:
+        model: TextCNN model to train.
+        loader: DataLoader for training data.
+        criterion: Loss function.
+        optimizer: Optimizer for parameter updates.
+        device: Device to run training on.
+        dataset_size: Size of the training dataset.
+
+    Returns:
+        Average training loss for the epoch.
+    """
     model.train()
     total_loss = 0.0
     for inputs, targets in loader:
@@ -77,6 +90,18 @@ def evaluate_on_val(
     device: torch.device,
     dataset_size: int,
 ) -> tuple[float, float]:
+    """Evaluate the model on validation data.
+
+    Args:
+        model: TextCNN model to evaluate.
+        loader: DataLoader for validation data.
+        criterion: Loss function.
+        device: Device to run evaluation on.
+        dataset_size: Size of the validation dataset.
+
+    Returns:
+        Tuple of (average validation loss, macro F1 score).
+    """
     model.eval()
     total_loss = 0.0
     all_targets: list[int] = []
@@ -95,6 +120,12 @@ def evaluate_on_val(
 
 
 def train_cnn() -> None:
+    """Train a TextCNN model for IT ticket classification.
+
+    This function loads and prepares data, builds vocabulary, initializes the model,
+    trains with early stopping, and saves all artifacts including model weights,
+    configuration, and metadata for reproducibility.
+    """
     set_seed(SEED)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Using device:", device)

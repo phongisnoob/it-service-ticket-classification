@@ -18,11 +18,15 @@ from src.textcnn import TextCNN
 
 
 class TopPrediction(TypedDict):
+    """Single category prediction with probability score."""
+
     category: str
     probability: float
 
 
 class PredictionResult(TypedDict):
+    """Complete prediction result with confidence and routing decision."""
+
     category: str
     confidence: float
     threshold: float
@@ -31,6 +35,8 @@ class PredictionResult(TypedDict):
 
 
 class CNNConfig(TypedDict):
+    """Configuration parameters for CNN model architecture and inference."""
+
     max_length: int
     embedding_dim: int
     num_filters: int
@@ -45,6 +51,15 @@ class CNNConfig(TypedDict):
 
 
 def get_selected_backend() -> str:
+    """Get the selected model backend from model selection results.
+
+    Returns:
+        Backend name ('baseline' or 'cnn').
+
+    Raises:
+        FileNotFoundError: If model_selection.json doesn't exist.
+        RuntimeError: If invalid backend is configured.
+    """
     if not MODEL_SELECTION_PATH.exists():
         raise FileNotFoundError(
             "model_selection.json not found. Run python -m src.select_model first."
@@ -59,6 +74,23 @@ def get_selected_backend() -> str:
 
 
 def load_threshold(threshold_path: Path, model_path: Path) -> float:
+    """Load and validate threshold value for a model.
+
+    Validates that the threshold file matches the model using SHA-256 hash
+    to ensure consistency between model and threshold configuration.
+
+    Args:
+        threshold_path: Path to threshold JSON file.
+        model_path: Path to model artifact file.
+
+    Returns:
+        Threshold value between 0 and 1.
+
+    Raises:
+        FileNotFoundError: If model or threshold file doesn't exist.
+        RuntimeError: If hash validation fails.
+        ValueError: If threshold is out of valid range.
+    """
     if not model_path.exists():
         raise FileNotFoundError(f"Model artifact not found: {model_path}")
 
@@ -93,6 +125,16 @@ def format_prediction(
     probabilities: "np.ndarray",
     threshold: float,
 ) -> PredictionResult:
+    """Format model outputs into a standardized prediction result.
+
+    Args:
+        labels: Array or list of category labels.
+        probabilities: Array of predicted probabilities for each class.
+        threshold: Confidence threshold for manual review decision.
+
+    Returns:
+        PredictionResult with category, confidence, and top-3 predictions.
+    """
     order = np.argsort(probabilities)[::-1]
     best_index = int(order[0])
     confidence = float(probabilities[best_index])
@@ -111,9 +153,12 @@ def format_prediction(
 
 
 class BaselinePredictor:
+    """Predictor for baseline TF-IDF + Logistic Regression model."""
+
     backend = "baseline"
 
     def __init__(self) -> None:
+        """Initialize the baseline predictor by loading model and threshold."""
         model_path = ARTIFACT_DIR / "baseline.joblib"
         self.threshold = load_threshold(BASELINE_THRESHOLD_PATH, model_path)
         self.model_sha256 = calculate_file_sha256(model_path)
@@ -127,14 +172,25 @@ class BaselinePredictor:
             raise AttributeError("Loaded model has no classes_ attribute")
 
     def predict(self, text: str) -> PredictionResult:
+        """Predict category for input text.
+
+        Args:
+            text: Input ticket text to classify.
+
+        Returns:
+            PredictionResult with classification and confidence.
+        """
         probabilities: "np.ndarray" = self.model.predict_proba([text])[0]
         return format_prediction(self.labels, probabilities, self.threshold)
 
 
 class CNNPredictor:
+    """Predictor for TextCNN deep learning model."""
+
     backend = "cnn"
 
     def __init__(self) -> None:
+        """Initialize CNN predictor by loading model, vocabulary, and configuration."""
         cnn_dir = ARTIFACT_DIR / "cnn"
         weights_path = cnn_dir / "textcnn.pt"
         manifest_path = cnn_dir / "artifact_manifest.json"
@@ -185,6 +241,14 @@ class CNNPredictor:
         self.model_sha256 = calculate_file_sha256(weights_path)
 
     def predict(self, text: str) -> PredictionResult:
+        """Predict category for input text using CNN model.
+
+        Args:
+            text: Input ticket text to classify.
+
+        Returns:
+            PredictionResult with classification and confidence.
+        """
         token_ids = encode_text(text, self.vocab, max_length=self.config["max_length"])
         x = torch.tensor([token_ids], dtype=torch.long).to(self.device)
 
@@ -196,6 +260,17 @@ class CNNPredictor:
 
 
 def get_predictor(backend: str = "auto") -> BaselinePredictor | CNNPredictor:
+    """Get a predictor instance for the specified or auto-selected backend.
+
+    Args:
+        backend: Backend to use ('baseline', 'cnn', or 'auto' for auto-selection).
+
+    Returns:
+        Initialized predictor instance (BaselinePredictor or CNNPredictor).
+
+    Raises:
+        ValueError: If unknown backend is specified.
+    """
     if backend == "auto":
         backend = get_selected_backend()
 

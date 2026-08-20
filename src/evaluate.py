@@ -1,3 +1,5 @@
+"""Evaluation metrics and reporting utilities for model assessment."""
+
 import numpy as np
 from sklearn.metrics import (
     accuracy_score,
@@ -9,6 +11,15 @@ from sklearn.metrics import (
 
 
 def calculate_metrics(y_true: "pd.Series", y_pred: "np.ndarray") -> dict[str, float]:
+    """Calculate standard classification metrics.
+
+    Args:
+        y_true: Ground truth labels.
+        y_pred: Predicted labels.
+
+    Returns:
+        Dictionary containing accuracy, macro precision/recall/F1, and weighted F1.
+    """
     return {
         "accuracy": float(accuracy_score(y_true, y_pred)),
         "macro_precision": float(precision_score(y_true, y_pred, average="macro", zero_division=0)),
@@ -19,6 +30,12 @@ def calculate_metrics(y_true: "pd.Series", y_pred: "np.ndarray") -> dict[str, fl
 
 
 def print_report(y_true: "pd.Series", y_pred: "np.ndarray") -> None:
+    """Print detailed classification report to stdout.
+
+    Args:
+        y_true: Ground truth labels.
+        y_pred: Predicted labels.
+    """
     print(classification_report(y_true, y_pred, zero_division=0))
 
 
