@@ -1,11 +1,11 @@
 {
     "model_backend": "baseline",
-    "python_version": "3.14.4",
+    "python_version": "3.12.14",
     "scikit_learn_version": "1.9.0",
     "dataset_sha256": "044fdace33fa564e1e60453f2941dafc95539c99878b0d32746950394b9dd4d4",
-    "model_sha256": "b9149778f36f037647abe70691d19a3b27ba5c17d32f1056b91e287f9a891b3b",
-    "training_timestamp": "2026-08-14T12:18:52.285533+00:00",
-    "git_commit": "2dc5dacb5343d490a66e7d3ad7e05b5dd2db7a65",
+    "model_sha256": "22d97863c792e6fd01431ae6fae42fe8547295253cc0cfc341a116eccf93e734",
+    "training_timestamp": "2026-08-15T02:37:28.822598+00:00",
+    "git_commit": "3f37f84e1bc4c5eaa677c2cae0645d67b6031e67",
     "random_seed": 42,
     "hyperparameters": {
         "ngram_range": [

@@ -122,7 +122,9 @@ def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
     # When API_KEY is unset and not in production, the service runs in open/demo mode.
     if API_KEY is None:
         return
-    if x_api_key is None or not secrets.compare_digest(x_api_key, API_KEY):
+    if x_api_key is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing API key")
+    if not secrets.compare_digest(x_api_key, API_KEY):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
 
 

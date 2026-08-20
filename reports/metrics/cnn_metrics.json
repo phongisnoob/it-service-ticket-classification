@@ -1,9 +1,9 @@
 {
-    "accuracy": 0.8433256736996031,
-    "macro_precision": 0.845500216896127,
-    "macro_recall": 0.8450753074848953,
-    "macro_f1": 0.8446397321798917,
-    "weighted_f1": 0.8438068825105584,
-    "top_label_brier_score": 0.102804,
-    "expected_calibration_error": 0.043626
+    "accuracy": 0.8416544808857321,
+    "macro_precision": 0.8332220412730588,
+    "macro_recall": 0.8550692604283012,
+    "macro_f1": 0.8430043086809378,
+    "weighted_f1": 0.8419827061704439,
+    "top_label_brier_score": 0.10685,
+    "expected_calibration_error": 0.045686
 }

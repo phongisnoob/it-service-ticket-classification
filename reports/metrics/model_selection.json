@@ -4,7 +4,7 @@
     "selection_rule": "Highest validation coverage subject to lower 95% auto-routing accuracy CI meeting the target; Macro F1 as tie-breaker",
     "selected_backend": "baseline",
     "selected_threshold": 0.57,
-    "selected_model_sha256": "b9149778f36f037647abe70691d19a3b27ba5c17d32f1056b91e287f9a891b3b",
+    "selected_model_sha256": "22d97863c792e6fd01431ae6fae42fe8547295253cc0cfc341a116eccf93e734",
     "candidates": [
         {
             "backend": "baseline",
@@ -13,18 +13,18 @@
             "threshold": 0.57,
             "validation_coverage": 0.8382506800585897,
             "validation_auto_routed_accuracy": 0.9161258112830754,
-            "validation_accuracy_ci_lower": 0.9009397778036977,
-            "model_sha256": "b9149778f36f037647abe70691d19a3b27ba5c17d32f1056b91e287f9a891b3b"
+            "validation_accuracy_ci_lower": 0.9009397778036978,
+            "model_sha256": "22d97863c792e6fd01431ae6fae42fe8547295253cc0cfc341a116eccf93e734"
         },
         {
             "backend": "cnn",
-            "validation_accuracy": 0.8508056078677547,
-            "validation_macro_f1": 0.8549167800498795,
-            "threshold": 0.72,
-            "validation_coverage": 0.8198367859384809,
-            "validation_auto_routed_accuracy": 0.9185809086268504,
-            "validation_accuracy_ci_lower": 0.9034035559363833,
-            "model_sha256": "35bea424be32250af1033785b63263519bba5e8b4bbad061f15f29f9703dcd9f"
+            "validation_accuracy": 0.8422264071981586,
+            "validation_macro_f1": 0.8484883023963822,
+            "threshold": 0.76,
+            "validation_coverage": 0.8064448629420381,
+            "validation_auto_routed_accuracy": 0.9156720290607161,
+            "validation_accuracy_ci_lower": 0.9001365121990906,
+            "model_sha256": "f2baea6b9a3a005b07436385eaeeec770773288e121e47e89aa33414a1b38111"
         }
     ]
 }

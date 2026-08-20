@@ -31,7 +31,7 @@ The production baseline uses sigmoid probability calibration through `Calibrated
 
 ### Confidence-based routing
 
-I initially tried picking the routing threshold by just checking accuracy on the validation split. However, to avoid picking a "lucky" threshold that overfits, the script now computes a 95% bootstrap confidence interval (1,000 resamples). It requires the **lower bound** of the accuracy CI to be at least 90%, then picks the threshold that maximizes coverage.
+Threshold selection uses a statistically rigorous procedure: for each candidate threshold on a 0.01-step grid, the script computes a one-sided **exact Clopper-Pearson confidence lower bound** on auto-route accuracy, with a **Bonferroni correction** for the number of candidates evaluated. A threshold is eligible only if its simultaneous lower bound is ≥ 90%. Among eligible thresholds, the one with the highest coverage (most tickets auto-routed) is selected.
 
 For Logistic Regression, the chosen threshold was **0.54**.
 
@@ -45,7 +45,7 @@ For Logistic Regression, the chosen threshold was **0.54**.
 
 ![Routing accuracy versus coverage](reports/figures/baseline_threshold_tradeoff.png)
 
-On the held-out test set, auto-routed tickets achieved 90.57% accuracy. The 95% bootstrap confidence interval was approximately 89.84%–91.27%, so the 90% target should be interpreted as a validation-time routing criterion rather than a guaranteed lower bound on future data.
+On the held-out test set, auto-routed tickets achieved 90.57% accuracy. This figure is a point estimate on the test set; the statistical accuracy guarantee (simultaneous Clopper-Pearson lower bound ≥ 90%) was established on the tune set and should not be re-interpreted as a guarantee on unseen future data.
 
 This converts the classifier into a simple human-in-the-loop routing system: high-confidence tickets are routed automatically, while lower-confidence cases are flagged for manual review.
 

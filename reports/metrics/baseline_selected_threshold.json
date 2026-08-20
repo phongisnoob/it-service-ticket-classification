@@ -5,10 +5,10 @@
     "alpha": 0.05,
     "n_candidates": 90,
     "min_accepted_samples": 50,
-    "model_sha256": "b9149778f36f037647abe70691d19a3b27ba5c17d32f1056b91e287f9a891b3b",
+    "model_sha256": "22d97863c792e6fd01431ae6fae42fe8547295253cc0cfc341a116eccf93e734",
     "validation_coverage": 0.8382506800585897,
     "validation_auto_routed_accuracy": 0.9161258112830754,
-    "validation_accuracy_ci_lower": 0.9009397778036977,
+    "validation_accuracy_ci_lower": 0.9009397778036978,
     "validation_manual_review_rate": 0.16174931994141029,
     "per_class_stats": [
         {

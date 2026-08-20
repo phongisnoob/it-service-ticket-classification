@@ -1,9 +1,22 @@
 """Dataset loading and deterministic split utilities.
 
-The ``prepare_data`` DVC stage (src/prepare_data.py) is the authoritative
-producer of split IDs and the quality report.  ``load_data`` and
-``split_data`` consume those persisted outputs so every downstream stage
-uses identical partitions.
+The ``prepare_data`` DVC stage (src/prepare_data.py) is the **sole** producer
+of split IDs and the data quality report.  ``load_data`` and ``split_data``
+consume those persisted outputs so every downstream stage uses identical
+partitions.
+
+Canonical split design (70 / 10 / 10 / 10):
+    train           — model fitting
+    tune            — threshold selection (never used for training)
+    calibration     — reserved for post-hoc calibration quality measurement
+    test            — final held-out evaluation (never used before final report)
+
+``split_data()`` returns (train, tune, test).  The calibration set is
+available separately via ``load_calibration_split()``.
+
+No fallback split generation: if persisted split files are absent, the
+function raises ``FileNotFoundError`` with a clear instruction.  This prevents
+silent use of a different split ratio (e.g. 70/15/15) than the canonical one.
 """
 
 import hashlib
@@ -11,7 +24,6 @@ import json
 import re
 
 import pandas as pd
-from sklearn.model_selection import train_test_split
 
 from src.hashing import calculate_file_sha256
 from src.paths import DATA_PATH, REPORT_DATA_DIR
@@ -27,6 +39,12 @@ def load_data(deduplicate: bool = True) -> pd.DataFrame:
     Uses a full SHA-256 ticket ID (not a 16-char prefix) so IDs are
     collision-resistant.  Blank normalized rows are rejected before
     deduplication.
+
+    Side effects:
+        When ``deduplicate=True`` and conflicting labels are found, a CSV
+        report is written to ``reports/data/conflicting_duplicate_labels.csv``.
+        This is intentional for developer visibility during local runs; the
+        canonical conflict report is produced by ``prepare_data`` instead.
     """
     df = pd.read_csv(DATA_PATH)[["Document", "Topic_group"]].copy()
     df = df.dropna(subset=["Document", "Topic_group"]).copy()
@@ -66,151 +84,206 @@ def load_data(deduplicate: bool = True) -> pd.DataFrame:
     return result
 
 
-def save_split_manifest(
-    train_df: pd.DataFrame,
-    val_df: pd.DataFrame,
-    test_df: pd.DataFrame,
-    random_state: int = 42,
-) -> None:
-    """Persist split IDs and metadata required for reproducibility."""
-    REPORT_DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-    pd.DataFrame({"id": train_df.index}).to_csv(REPORT_DATA_DIR / "train_ids.csv", index=False)
-    # Write as tune_ids.csv (canonical name from prepare_data) AND val_ids.csv (legacy name)
-    pd.DataFrame({"id": val_df.index}).to_csv(REPORT_DATA_DIR / "tune_ids.csv", index=False)
-    pd.DataFrame({"id": val_df.index}).to_csv(REPORT_DATA_DIR / "val_ids.csv", index=False)
-    pd.DataFrame({"id": test_df.index}).to_csv(REPORT_DATA_DIR / "test_ids.csv", index=False)
-
-    manifest = {
-        "dataset_sha256": calculate_file_sha256(DATA_PATH),
-        "random_seed": random_state,
-        "train_rows": len(train_df),
-        "validation_rows": len(val_df),  # kept for backward compat
-        "tune_rows": len(val_df),
-        "test_rows": len(test_df),
-        "total_rows": len(train_df) + len(val_df) + len(test_df),
-    }
-    with open(REPORT_DATA_DIR / "data_manifest.json", "w", encoding="utf-8") as f:
-        json.dump(manifest, f, indent=4)
-
-
 def validate_persisted_splits(
     df: pd.DataFrame,
     train_ids: "pd.Index",
-    val_ids: "pd.Index",
+    tune_ids: "pd.Index",
     test_ids: "pd.Index",
     manifest: dict[str, object],
+    calib_ids: "pd.Index | None" = None,
 ) -> None:
-    """Validate persisted splits against the current dataset."""
+    """Validate persisted splits against the current dataset.
+
+    Checks:
+    - Dataset SHA-256 matches manifest (detects modified CSV)
+    - All split IDs exist in the current dataset
+    - All splits are mutually disjoint (train/tune/test + optional calib)
+    - Split sizes match manifest
+    - For 3-way splits: train + tune + test covers the full dataset
+    - For 4-way splits: calibration disjointness is also verified
+
+    Args:
+        df: The full cleaned dataset indexed by ticket_id.
+        train_ids: IDs in the training split.
+        tune_ids: IDs in the tune/validation split (used for threshold selection).
+        test_ids: IDs in the held-out test split.
+        manifest: Parsed data_manifest.json dict.
+        calib_ids: Optional calibration split IDs. When provided, 4-way
+            disjointness is verified.
+
+    Raises:
+        RuntimeError: On any integrity violation.
+    """
     current_sha = calculate_file_sha256(DATA_PATH)
     stored_sha = manifest.get("dataset_sha256")
 
     if stored_sha is None:
         raise RuntimeError(
-            "Persisted split manifest does not contain 'dataset_sha256'. Regenerate the splits."
+            "Persisted split manifest does not contain 'dataset_sha256'. "
+            "Regenerate the splits by running: dvc repro prepare_data"
         )
     if current_sha != stored_sha:
         raise RuntimeError(
             "Dataset has changed since the persisted splits were created. "
-            "Regenerate train/validation/test splits."
+            "Regenerate splits by running: dvc repro prepare_data"
         )
 
-    train_set, val_set, test_set = set(train_ids), set(val_ids), set(test_ids)
+    train_set = set(train_ids)
+    tune_set = set(tune_ids)
+    test_set = set(test_ids)
+    calib_set = set(calib_ids) if calib_ids is not None else set()
     current_ids = set(df.index)
 
-    if not train_set.isdisjoint(val_set):
-        raise RuntimeError("Persisted train and validation splits overlap.")
-    if not train_set.isdisjoint(test_set):
-        raise RuntimeError("Persisted train and test splits overlap.")
-    if not val_set.isdisjoint(test_set):
-        raise RuntimeError("Persisted validation and test splits overlap.")
+    # Disjointness checks — always required
+    pairs = [
+        ("train", train_set, "tune", tune_set),
+        ("train", train_set, "test", test_set),
+        ("tune", tune_set, "test", test_set),
+    ]
+    if calib_ids is not None:
+        pairs.extend([
+            ("train", train_set, "calibration", calib_set),
+            ("tune", tune_set, "calibration", calib_set),
+            ("test", test_set, "calibration", calib_set),
+        ])
 
-    persisted_ids = train_set | val_set | test_set
-    # When a calibration split exists (4-way split), train+tune+test < total_rows.
-    # Only enforce the exact-coverage check for 3-way splits.
-    has_calibration = "calibration_rows" in manifest
-    if not has_calibration and persisted_ids != current_ids:
-        missing = current_ids - persisted_ids
-        unknown = persisted_ids - current_ids
-        raise RuntimeError(
-            f"Persisted splits do not exactly match the current dataset. "
-            f"Missing from splits: {len(missing)}. Unknown persisted IDs: {len(unknown)}. "
-            "Regenerate train/validation/test splits."
-        )
-    # Always check for unknown IDs (IDs in splits that don't exist in df)
-    unknown = persisted_ids - current_ids
+    for name_a, set_a, name_b, set_b in pairs:
+        overlap = set_a & set_b
+        if overlap:
+            raise RuntimeError(
+                f"Persisted {name_a} and {name_b} splits overlap: "
+                f"{len(overlap)} shared IDs."
+            )
+
+    # All persisted IDs must exist in current dataset
+    all_persisted = train_set | tune_set | test_set | calib_set
+    unknown = all_persisted - current_ids
     if unknown:
         raise RuntimeError(
             f"Persisted splits contain {len(unknown)} IDs not found in current dataset. "
-            "Regenerate train/validation/test splits."
+            "Regenerate splits by running: dvc repro prepare_data"
         )
 
+    # Size checks against manifest
     if manifest.get("train_rows") is not None and len(train_ids) != manifest["train_rows"]:
         raise RuntimeError("Persisted train split size does not match data_manifest.json.")
-    # Accept either validation_rows or tune_rows key for forward/backward compatibility
-    val_rows_key = "tune_rows" if "tune_rows" in manifest else "validation_rows"
-    if manifest.get(val_rows_key) is not None and len(val_ids) != manifest[val_rows_key]:
-        raise RuntimeError("Persisted validation/tune split size does not match data_manifest.json.")
+    if manifest.get("tune_rows") is not None and len(tune_ids) != manifest["tune_rows"]:
+        raise RuntimeError("Persisted tune split size does not match data_manifest.json.")
     if manifest.get("test_rows") is not None and len(test_ids) != manifest["test_rows"]:
         raise RuntimeError("Persisted test split size does not match data_manifest.json.")
-    if not has_calibration and (
-        manifest.get("total_rows") is not None
-        and len(train_ids) + len(val_ids) + len(test_ids) != manifest["total_rows"]
-    ):
-        raise RuntimeError("Persisted total split size does not match data_manifest.json.")
+    if calib_ids is not None and manifest.get("calibration_rows") is not None:
+        if len(calib_ids) != manifest["calibration_rows"]:
+            raise RuntimeError(
+                "Persisted calibration split size does not match data_manifest.json."
+            )
+
+    # Collective exhaustiveness — only enforceable when calibration split known
+    has_calibration = calib_ids is not None
+    if has_calibration:
+        persisted_ids = train_set | tune_set | test_set | calib_set
+    else:
+        persisted_ids = train_set | tune_set | test_set
+
+    if manifest.get("total_rows") is not None:
+        total_manifest = int(manifest["total_rows"])
+        if len(persisted_ids) != total_manifest:
+            # Only enforce strict equality for 3-way splits (calib absent)
+            if not has_calibration:
+                missing = current_ids - persisted_ids
+                raise RuntimeError(
+                    f"Persisted splits do not cover all dataset rows. "
+                    f"Missing: {len(missing)} IDs. "
+                    "Regenerate splits by running: dvc repro prepare_data"
+                )
+
+
+def load_calibration_split(df: pd.DataFrame) -> pd.DataFrame:
+    """Load the calibration split from persisted IDs.
+
+    The calibration set is the 10% reserved partition produced by
+    ``prepare_data``. It is used for post-hoc calibration quality measurement
+    (ECE, Brier score) **after** the model has been fitted and thresholded on
+    separate data.  It must never be used for training or threshold selection.
+
+    Raises:
+        FileNotFoundError: If calibration_ids.csv is not present.
+            Run ``dvc repro prepare_data`` to generate it.
+    """
+    calib_ids_path = REPORT_DATA_DIR / "calibration_ids.csv"
+    if not calib_ids_path.exists():
+        raise FileNotFoundError(
+            f"Calibration split IDs not found: {calib_ids_path}. "
+            "Run: dvc repro prepare_data"
+        )
+    calib_ids = pd.read_csv(calib_ids_path)["id"].values
+    return df.loc[calib_ids].copy()
 
 
 def split_data(
     df: pd.DataFrame | None = None,
     random_state: int = 42,
-    use_persisted: bool = True,
-    persist_manifest: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Return (train, val, test) DataFrames using a 70/15/15 stratified split.
+    """Return (train, tune, test) DataFrames from persisted split IDs.
 
-    When persisted split files exist and the dataset SHA-256 still matches, the exact
-    same split is reloaded. This ensures models are never evaluated on data they were
-    trained on even if split() is called multiple times.
+    The canonical 70/10/10/10 split (train/tune/calibration/test) is produced
+    exclusively by the ``prepare_data`` DVC stage (src/prepare_data.py).
+    This function loads and validates those persisted IDs.
+
+    **No fallback split generation**: if the split files are absent, a
+    ``FileNotFoundError`` is raised with a clear instruction. This prevents
+    accidental use of a different split ratio.
+
+    The calibration split (10%) is not returned here to keep the existing
+    caller interface stable. Use ``load_calibration_split()`` to access it.
+
+    Args:
+        df: Pre-loaded dataset. If None, ``load_data()`` is called.
+        random_state: Accepted for API compatibility; the split is always
+            loaded from persisted files, so this parameter has no effect.
+
+    Returns:
+        (train_df, tune_df, test_df) — non-overlapping DataFrames.
+
+    Raises:
+        FileNotFoundError: If any required split file or manifest is absent.
+        RuntimeError: If integrity validation fails (hash mismatch, overlap,
+            size mismatch).
     """
     if df is None:
         df = load_data(deduplicate=True)
 
     train_ids_path = REPORT_DATA_DIR / "train_ids.csv"
-    # prefer tune_ids.csv (canonical from prepare_data); fall back to val_ids.csv (legacy)
     tune_ids_path = REPORT_DATA_DIR / "tune_ids.csv"
-    val_ids_path = REPORT_DATA_DIR / "val_ids.csv"
-    effective_val_path = tune_ids_path if tune_ids_path.exists() else val_ids_path
     test_ids_path = REPORT_DATA_DIR / "test_ids.csv"
+    calib_ids_path = REPORT_DATA_DIR / "calibration_ids.csv"
     manifest_path = REPORT_DATA_DIR / "data_manifest.json"
 
-    if use_persisted and all(
-        p.exists() for p in [train_ids_path, effective_val_path, test_ids_path, manifest_path]
-    ):
-        with open(manifest_path, encoding="utf-8") as f:
-            manifest: dict[str, object] = json.load(f)
+    required = {
+        "train_ids.csv": train_ids_path,
+        "tune_ids.csv": tune_ids_path,
+        "test_ids.csv": test_ids_path,
+        "data_manifest.json": manifest_path,
+    }
+    missing = [name for name, path in required.items() if not path.exists()]
+    if missing:
+        raise FileNotFoundError(
+            f"Persisted split files missing: {missing}. "
+            "Run: dvc repro prepare_data"
+        )
 
-        train_ids = pd.read_csv(train_ids_path)["id"].values
-        val_ids = pd.read_csv(effective_val_path)["id"].values
-        test_ids = pd.read_csv(test_ids_path)["id"].values
+    with open(manifest_path, encoding="utf-8") as f:
+        manifest: dict[str, object] = json.load(f)
 
-        validate_persisted_splits(df, train_ids, val_ids, test_ids, manifest)
+    train_ids = pd.read_csv(train_ids_path)["id"].values
+    tune_ids = pd.read_csv(tune_ids_path)["id"].values
+    test_ids = pd.read_csv(test_ids_path)["id"].values
 
-        return df.loc[train_ids].copy(), df.loc[val_ids].copy(), df.loc[test_ids].copy()
+    # Load calibration IDs if present (always expected from canonical pipeline)
+    calib_ids: pd.Index | None = None
+    if calib_ids_path.exists():
+        calib_ids = pd.Index(pd.read_csv(calib_ids_path)["id"].values)
 
-    train_df, temp_df = train_test_split(
-        df,
-        test_size=0.30,
-        stratify=df["Topic_group"],
-        random_state=random_state,
-    )
-    val_df, test_df = train_test_split(
-        temp_df,
-        test_size=0.50,
-        stratify=temp_df["Topic_group"],
-        random_state=random_state,
-    )
+    validate_persisted_splits(df, pd.Index(train_ids), pd.Index(tune_ids),
+                               pd.Index(test_ids), manifest, calib_ids)
 
-    if persist_manifest:
-        save_split_manifest(train_df, val_df, test_df, random_state)
-
-    return train_df, val_df, test_df
+    return df.loc[train_ids].copy(), df.loc[tune_ids].copy(), df.loc[test_ids].copy()

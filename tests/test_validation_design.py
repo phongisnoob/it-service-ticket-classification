@@ -1,7 +1,7 @@
 """Unit tests for data integrity and validation design.
 
 Covers:
-- Split disjointness
+- Split disjointness (3-way and 4-way)
 - Blank row rejection
 - ID collision detection
 - Clopper-Pearson simultaneous bounds
@@ -193,27 +193,58 @@ class TestSplitDisjointness:
         assert set(val.index).isdisjoint(set(test.index))
 
     def test_no_test_access_during_split(self) -> None:
-        """split_data must NOT look at test_ids when called for training."""
-        # This structural test confirms split_data returns train,val,test
-        # using only persisted IDs (not recomputing from test).
+        """split_data must NOT look at test_ids when called for training.
+
+        This structural test confirms split_data returns train, tune, test
+        using only persisted IDs (not recomputing from test).
+        """
         from src.data import validate_persisted_splits
 
-        # Build a minimal consistent manifest
+        # Build a minimal consistent manifest — use canonical tune_rows key
         df = self._make_df(90)
         ids = list(df.index)
         train_ids = pd.Index(ids[:63])
-        val_ids = pd.Index(ids[63:76])
+        tune_ids = pd.Index(ids[63:76])
         test_ids = pd.Index(ids[76:])
         manifest: dict[str, object] = {
             "dataset_sha256": "fakehash",
             "train_rows": len(train_ids),
-            "validation_rows": len(val_ids),
+            "tune_rows": len(tune_ids),  # canonical key (not validation_rows)
             "test_rows": len(test_ids),
             "total_rows": len(df),
         }
         # Patch file SHA so validation passes hash check
         with patch("src.data.calculate_file_sha256", return_value="fakehash"):
-            validate_persisted_splits(df, train_ids, val_ids, test_ids, manifest)
+            validate_persisted_splits(df, train_ids, tune_ids, test_ids, manifest)
+
+    def test_four_way_split_disjoint(self) -> None:
+        """Canonical 70/10/10/10 split must have zero overlap across all 6 pairs."""
+        from sklearn.model_selection import train_test_split
+
+        df = self._make_df(200)
+        # 70% train, 30% temp
+        train, temp = train_test_split(df, test_size=0.30, stratify=df["Topic_group"],
+                                       random_state=42)
+        # temp → 1/3 tune (10% overall), 2/3 calib+test (20% overall)
+        tune, calib_test = train_test_split(temp, test_size=2 / 3,
+                                            stratify=temp["Topic_group"], random_state=42)
+        # calib_test → 50/50 calibration + test (10% each)
+        calib, test = train_test_split(calib_test, test_size=0.50,
+                                       stratify=calib_test["Topic_group"], random_state=42)
+
+        splits = {
+            "train": set(train.index),
+            "tune": set(tune.index),
+            "calibration": set(calib.index),
+            "test": set(test.index),
+        }
+        names = list(splits.keys())
+        for i, name_a in enumerate(names):
+            for name_b in names[i + 1:]:
+                overlap = splits[name_a] & splits[name_b]
+                assert not overlap, (
+                    f"{name_a} and {name_b} overlap: {len(overlap)} shared IDs"
+                )
 
 
 # ---------------------------------------------------------------------------

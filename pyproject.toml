@@ -1,5 +1,5 @@
 [project]
-name = "it-ticket-classification"
+name = "it-service-ticket-classification"
 version = "1.0.0"
 description = "IT service ticket classification with confidence-based routing"
 requires-python = ">=3.12"

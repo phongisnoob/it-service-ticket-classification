@@ -1,13 +1,34 @@
+"""Production model selection.
+
+Selects the candidate model (baseline or CNN) that best satisfies the
+business objective:
+
+    Primary criterion (hard constraint):
+        validation_accuracy_ci_lower >= target_accuracy
+        (simultaneous Clopper-Pearson lower bound on the tune set)
+
+    Secondary criterion (maximize):
+        validation_coverage (higher coverage = more tickets auto-routed)
+
+    Tie-breaker:
+        validation_macro_f1 (performance across imbalanced classes)
+
+All parameters are read from params.yaml[routing] so the selection
+procedure is fully reproducible and config-driven.
+
+This function operates exclusively on validation (tune) set metrics.
+It must never access test-set data.
+"""
+
 import json
 from pathlib import Path
 from typing import TypedDict
 
 import pandas as pd
+import yaml
 from sklearn.metrics import accuracy_score, f1_score
 
-from src.paths import METRICS_DIR
-
-TARGET_ACCURACY = 0.90
+from src.paths import METRICS_DIR, ROOT_DIR
 
 
 class CandidateResult(TypedDict):
@@ -80,14 +101,24 @@ def load_candidate(backend: str, paths: ModelPaths) -> CandidateResult:
 
 
 def main() -> None:
+    with open(ROOT_DIR / "params.yaml", encoding="utf-8") as f:
+        params = yaml.safe_load(f).get("routing", {})
+
+    target_accuracy: float = float(params.get("target_accuracy", 0.90))
+
     candidates = [load_candidate(backend, paths) for backend, paths in MODEL_CONFIGS.items()]
 
-    eligible = [c for c in candidates if c["validation_accuracy_ci_lower"] >= TARGET_ACCURACY]
+    eligible = [c for c in candidates if c["validation_accuracy_ci_lower"] >= target_accuracy]
 
     if not eligible:
         raise RuntimeError(
             "No model satisfies the routing requirement: "
-            f"lower 95% accuracy CI >= {TARGET_ACCURACY:.0%}."
+            f"lower 95% accuracy CI >= {target_accuracy:.0%}.\n"
+            "Candidates:\n"
+            + "\n".join(
+                f"  {c['backend']}: ci_lower={c['validation_accuracy_ci_lower']:.4f}"
+                for c in candidates
+            )
         )
 
     winner = max(
@@ -96,11 +127,13 @@ def main() -> None:
     )
 
     output: dict[str, object] = {
-        "selection_dataset": "validation",
-        "target_accuracy": TARGET_ACCURACY,
+        "selection_dataset": "tune (validation)",
+        "target_accuracy": target_accuracy,
         "selection_rule": (
-            "Highest validation coverage subject to "
-            "lower 95% auto-routing accuracy CI meeting the target; Macro F1 as tie-breaker"
+            "Highest tune-set coverage subject to "
+            "simultaneous Clopper-Pearson lower bound >= target_accuracy; "
+            "Macro F1 as tie-breaker. "
+            "Test set was NOT accessed during selection."
         ),
         "selected_backend": winner["backend"],
         "selected_threshold": winner["threshold"],
@@ -112,8 +145,11 @@ def main() -> None:
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=4)
 
-    print(f"Selected backend: {winner['backend']}")
+    print(f"Selected backend:   {winner['backend']}")
     print(f"Selected threshold: {winner['threshold']}")
+    print(f"Tune coverage:      {winner['validation_coverage']:.2%}")
+    print(f"CI lower bound:     {winner['validation_accuracy_ci_lower']:.4f} "
+          f"(target: >= {target_accuracy:.2f})")
     print(f"Saved to: {output_path}")
 
 

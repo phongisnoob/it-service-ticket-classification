@@ -57,9 +57,4 @@ mlruns.db
 .env
 
 # Experiment tracking
-mlruns/
-mlartifacts/
-mlflow.db
-
-# Benchmark/monitoring temporary outputs
-reports/private/
+mlartifacts/

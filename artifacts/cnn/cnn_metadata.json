@@ -1,11 +1,11 @@
 {
     "model_backend": "cnn",
-    "pytorch_version": "2.13.0+cu126",
+    "pytorch_version": "2.13.0+cpu",
     "dataset_sha256": "044fdace33fa564e1e60453f2941dafc95539c99878b0d32746950394b9dd4d4",
-    "model_sha256": "35bea424be32250af1033785b63263519bba5e8b4bbad061f15f29f9703dcd9f",
-    "training_timestamp": "2026-08-14T12:20:29.142950+00:00",
-    "python_version": "3.14.4",
-    "git_commit": "2dc5dacb5343d490a66e7d3ad7e05b5dd2db7a65",
+    "model_sha256": "f2baea6b9a3a005b07436385eaeeec770773288e121e47e89aa33414a1b38111",
+    "training_timestamp": "2026-08-15T02:45:03.409209+00:00",
+    "python_version": "3.12.14",
+    "git_commit": "931cbc9f73798d5ad9b7f4537987a80a90cd8e76",
     "random_seed": 42,
     "hyperparameters": {
         "max_length": 136,
@@ -24,5 +24,5 @@
         "p95": 136.0,
         "p99": 283.0
     },
-    "best_val_macro_f1": 0.8549167800498795
+    "best_val_macro_f1": 0.8484883023963822
 }

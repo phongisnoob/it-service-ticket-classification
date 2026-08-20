@@ -31,9 +31,5 @@ routing:
   threshold_grid_step: 0.01
   # Promotion: CNN must beat baseline by this minimum margin on validation
   # coverage (subject to both meeting the accuracy requirement).
+  # Used by src/select_model.py (secondary ranking criterion).
   min_coverage_improvement: 0.02
-
-promotion:
-  # Minimum practical improvement required to promote CNN over baseline.
-  min_coverage_improvement: 0.02
-  min_accuracy_improvement: 0.005

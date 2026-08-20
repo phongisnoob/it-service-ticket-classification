@@ -151,9 +151,17 @@ def compute_bootstrap_ci(
     ci: float = 0.95,
     seed: int = 42,
 ) -> tuple[list[float], list[float]]:
-    """Bootstrap CI for routing accuracy and coverage (legacy, kept for compatibility).
+    """Bootstrap CI for routing accuracy and coverage.
 
-    Prefer ``select_threshold`` which uses exact Clopper-Pearson bounds.
+    .. deprecated::
+        This function is **not used** in the canonical DVC pipeline.
+        The production threshold selection uses ``select_threshold`` which
+        applies simultaneous exact Clopper-Pearson bounds with Bonferroni
+        correction — a statistically sounder and fully deterministic approach.
+
+        ``compute_bootstrap_ci`` is retained only for research/exploratory
+        use.  Do NOT import it in pipeline scripts.
+
     Returns (accuracy_ci, coverage_ci) each as [lower, upper].
     """
     rng = np.random.default_rng(seed)
