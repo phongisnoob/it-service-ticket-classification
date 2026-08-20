@@ -5,14 +5,17 @@ from typing import Any, Generator
 # Check if mlflow is available
 try:
     import mlflow
+
     MLFLOW_AVAILABLE = True
 except ImportError:
     MLFLOW_AVAILABLE = False
+
 
 def is_tracking_enabled() -> bool:
     if not MLFLOW_AVAILABLE:
         return False
     return os.environ.get("MLFLOW_TRACKING_ENABLED", "true").lower() in ("true", "1", "yes")
+
 
 @contextmanager
 def start_run(run_name: str, model_backend: str) -> Generator[Any, None, None]:
@@ -37,7 +40,7 @@ def start_run(run_name: str, model_backend: str) -> Generator[Any, None, None]:
                 yield mlflow
             return
         except Exception:
-            pass # Run might be deleted, fallback to new run
+            pass  # Run might be deleted, fallback to new run
 
     with mlflow.start_run(run_name=run_name) as run:
         mlflow.set_tag("model_backend", model_backend)
@@ -46,17 +49,21 @@ def start_run(run_name: str, model_backend: str) -> Generator[Any, None, None]:
             f.write(run.info.run_id)
         yield mlflow
 
+
 def log_params(params: dict[str, Any]) -> None:
     if is_tracking_enabled():
         mlflow.log_params(params)
+
 
 def log_metrics(metrics: dict[str, float]) -> None:
     if is_tracking_enabled():
         mlflow.log_metrics(metrics)
 
+
 def log_artifact(local_path: str, artifact_path: str | None = None) -> None:
     if is_tracking_enabled() and os.path.exists(local_path):
         mlflow.log_artifact(local_path, artifact_path)
+
 
 def log_dict_as_artifact(data: dict[str, Any], filename: str) -> None:
     if is_tracking_enabled():

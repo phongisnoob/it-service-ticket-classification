@@ -1,65 +1,41 @@
+```
 # Python
 __pycache__/
-*.py[cod]
+*.pyc
 *.pyo
-
-# Virtual environments
-.venv/
+*.pyd
+.Python
 env/
 venv/
+.venv/
+.ENV
+.ENV.local
+.env
+.env.local
+.env.*
 
-# Distribution / packaging
+# Build artifacts
 build/
 dist/
 *.egg-info/
 
 # Testing
-.pytest_cache/
 .coverage
 htmlcov/
-
-# Type checkers
+.pytest_cache/
 .mypy_cache/
-.ruff_cache/
 
-# Jupyter
-.ipynb_checkpoints/
+# Logs
+*.log
 
-# IDE
-.vscode/
-.idea/
-
-# OS
+# OS generated files
 .DS_Store
 Thumbs.db
 
-# Dataset (download separately from Kaggle)
-data/raw/*.csv
-
-# Model binaries (trained locally, not stored in Git)
-artifacts/*.joblib
-artifacts/**/*.pt
-
-# Prediction files may contain ticket text
-reports/metrics/*_predictions.csv
-reports/metrics/high_confidence_errors.csv
-reports/private/
-
-# Local development artifacts
-monkeytype.sqlite3
-mlruns/
-mlruns.db
-.mlflow_run_id_*
-
-# Temporary / local developer files
-*.bak
-*.sqlite3
-.env
-
-# Experiment tracking
-mlruns/
-mlartifacts/
-mlflow.db
-
-# Benchmark/monitoring temporary outputs
-reports/private/
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+```

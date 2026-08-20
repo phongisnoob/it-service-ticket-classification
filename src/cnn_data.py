@@ -66,7 +66,9 @@ class TicketDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         return len(self.texts)
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
-        x = torch.tensor(encode_text(self.texts[index], self.vocab, self.max_length), dtype=torch.long)
+        x = torch.tensor(
+            encode_text(self.texts[index], self.vocab, self.max_length), dtype=torch.long
+        )
         y = torch.tensor(self.labels[index], dtype=torch.long)
         return x, y
 

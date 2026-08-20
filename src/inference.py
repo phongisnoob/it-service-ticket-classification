@@ -98,8 +98,7 @@ def format_prediction(
     confidence = float(probabilities[best_index])
 
     top_3: list[TopPrediction] = [
-        {"category": str(labels[i]), "probability": float(probabilities[i])}
-        for i in order[:3]
+        {"category": str(labels[i]), "probability": float(probabilities[i])} for i in order[:3]
     ]
 
     return {

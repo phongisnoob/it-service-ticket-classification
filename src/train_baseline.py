@@ -44,7 +44,9 @@ def train_baseline() -> tuple[CalibratedClassifierCV, dict[str, float]]:
             ),
             (
                 "classifier",
-                LogisticRegression(max_iter=params["max_iter"], class_weight=params["class_weight"]),
+                LogisticRegression(
+                    max_iter=params["max_iter"], class_weight=params["class_weight"]
+                ),
             ),
         ]
     )

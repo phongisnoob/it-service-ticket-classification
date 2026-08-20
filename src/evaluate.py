@@ -50,7 +50,9 @@ def calculate_calibration_metrics(
         bin_size = int(mask.sum())
         if bin_size == 0:
             continue
-        ece += (bin_size / total) * abs(float(correct[mask].mean()) - float(confidence[mask].mean()))
+        ece += (bin_size / total) * abs(
+            float(correct[mask].mean()) - float(confidence[mask].mean())
+        )
 
     return {
         "top_label_brier_score": round(brier, 6),

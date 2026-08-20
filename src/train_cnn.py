@@ -111,7 +111,9 @@ def train_cnn() -> None:
 
     # Build the vocabulary from training data only to avoid leaking
     # validation/test token frequencies.
-    vocab = build_vocab(train_df["Document"].tolist(), min_freq=MIN_FREQ, max_vocab_size=MAX_VOCAB_SIZE)
+    vocab = build_vocab(
+        train_df["Document"].tolist(), min_freq=MIN_FREQ, max_vocab_size=MAX_VOCAB_SIZE
+    )
     print("Vocabulary size:", len(vocab))
 
     token_lengths = train_df["Document"].apply(lambda x: len(str(x).split()))

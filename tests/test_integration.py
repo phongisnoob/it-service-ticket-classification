@@ -18,7 +18,9 @@ from src.inference import (
 )
 from src.paths import BASELINE_MODEL_PATH, ROOT_DIR
 
-BASELINE_THRESHOLD_PATH_LOCAL = ROOT_DIR / "reports" / "metrics" / "baseline_selected_threshold.json"
+BASELINE_THRESHOLD_PATH_LOCAL = (
+    ROOT_DIR / "reports" / "metrics" / "baseline_selected_threshold.json"
+)
 
 
 def _model_and_threshold_compatible() -> bool:

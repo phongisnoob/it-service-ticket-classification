@@ -89,13 +89,15 @@ def main() -> None:
         json.dump(metrics, f, indent=4)
 
     with start_run(run_name="evaluate_routing_baseline", model_backend="baseline"):
-        log_metrics({
-            "test_routing_threshold": threshold,
-            "test_overall_accuracy": float(overall_accuracy),
-            "test_auto_route_coverage": float(coverage),
-            "test_manual_review_rate": float(manual_review_rate),
-            "test_auto_routed_accuracy": float(auto_routed_accuracy),
-        })
+        log_metrics(
+            {
+                "test_routing_threshold": threshold,
+                "test_overall_accuracy": float(overall_accuracy),
+                "test_auto_route_coverage": float(coverage),
+                "test_manual_review_rate": float(manual_review_rate),
+                "test_auto_routed_accuracy": float(auto_routed_accuracy),
+            }
+        )
 
     print("\nSaved to:", OUTPUT_PATH)
 
