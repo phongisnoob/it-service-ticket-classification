@@ -12,7 +12,6 @@ These tests use mock data only and never touch the raw dataset.
 """
 
 import hashlib
-import json
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -22,7 +21,6 @@ import pandas as pd
 import pytest
 
 from src.data import validate_persisted_splits
-
 
 # ---------------------------------------------------------------------------
 # Helpers

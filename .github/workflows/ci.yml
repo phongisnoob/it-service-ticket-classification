@@ -33,7 +33,7 @@ jobs:
         run: mypy src/ app/ tests/
 
       - name: Run unit and API tests
-        run: python -m pytest -v tests/test_api.py tests/test_api_hardening.py tests/test_ml_smoke.py tests/test_validation_design.py tests/test_integration.py
+        run: python -m pytest -v tests/test_api.py tests/test_api_hardening.py tests/test_ml_smoke.py tests/test_validation_design.py tests/test_integration.py tests/test_data_split.py
 
   artifact-integration:
     runs-on: ubuntu-latest

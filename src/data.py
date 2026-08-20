@@ -185,7 +185,7 @@ def validate_persisted_splits(
         persisted_ids = train_set | tune_set | test_set
 
     if manifest.get("total_rows") is not None:
-        total_manifest = int(manifest["total_rows"])
+        total_manifest = int(str(manifest["total_rows"]))
         if len(persisted_ids) != total_manifest:
             # Only enforce strict equality for 3-way splits (calib absent)
             if not has_calibration:
