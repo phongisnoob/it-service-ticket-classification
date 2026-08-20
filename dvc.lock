@@ -330,8 +330,8 @@ stages:
     outs:
     - path: artifacts/cnn/artifact_manifest.json
       hash: md5
-      md5: 9a3b5ee9fa62cbcfdf7a77f308e3a364
-      size: 348
+      md5: c3ff459f756dbfb2a68ca2a5dbc7c7fa
+      size: 349
     - path: artifacts/cnn/cnn_metadata.json
       hash: md5
       md5: b7138cdc79dd5ef884ac311799d5f96c
