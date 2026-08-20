@@ -63,13 +63,15 @@ def main() -> None:
         json.dump(routing_metrics, f, indent=4)
 
     with start_run(run_name="evaluate_routing_cnn", model_backend="cnn"):
-        log_metrics({
-            "test_routing_threshold": threshold,
-            "test_overall_accuracy": float(overall_accuracy),
-            "test_auto_route_coverage": float(coverage),
-            "test_manual_review_rate": float(manual_review_rate),
-            "test_auto_routed_accuracy": float(selective_accuracy),
-        })
+        log_metrics(
+            {
+                "test_routing_threshold": threshold,
+                "test_overall_accuracy": float(overall_accuracy),
+                "test_auto_route_coverage": float(coverage),
+                "test_manual_review_rate": float(manual_review_rate),
+                "test_auto_routed_accuracy": float(selective_accuracy),
+            }
+        )
 
     print(f"\nSaved to: {OUTPUT_PATH}")
 

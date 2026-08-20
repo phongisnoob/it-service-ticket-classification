@@ -10,6 +10,14 @@ from src.paths import DATA_PATH, REPORT_DATA_DIR
 
 
 def normalize_text(text: str) -> str:
+    """Normalize text by lowercasing, stripping whitespace, and collapsing spaces.
+
+    Args:
+        text: Raw input text.
+
+    Returns:
+        Normalized text string.
+    """
     return re.sub(r"\s+", " ", str(text).lower().strip())
 
 
@@ -71,30 +79,21 @@ def save_split_manifest(
         json.dump(manifest, f, indent=4)
 
 
-def validate_persisted_splits(
-    df: pd.DataFrame,
-    train_ids: "pd.Index",
-    val_ids: "pd.Index",
-    test_ids: "pd.Index",
-    manifest: dict[str, object],
-) -> None:
-    """Validate persisted splits against the current dataset."""
-    current_sha = calculate_file_sha256(DATA_PATH)
-    stored_sha = manifest.get("dataset_sha256")
-
-    if stored_sha is None:
+def _validate_split_manifest(manifest: dict[str, object]) -> None:
+    """Validate that manifest contains required fields."""
+    if manifest.get("dataset_sha256") is None:
         raise RuntimeError(
             "Persisted split manifest does not contain 'dataset_sha256'. Regenerate the splits."
         )
-    if current_sha != stored_sha:
-        raise RuntimeError(
-            "Dataset has changed since the persisted splits were created. "
-            "Regenerate train/validation/test splits."
-        )
 
-    train_set, val_set, test_set = set(train_ids), set(val_ids), set(test_ids)
-    current_ids = set(df.index)
 
+def _validate_split_ids(
+    train_set: set[str],
+    val_set: set[str],
+    test_set: set[str],
+    current_ids: set[str],
+) -> None:
+    """Validate that split IDs are valid and non-overlapping."""
     if not train_set.isdisjoint(val_set):
         raise RuntimeError("Persisted train and validation splits overlap.")
     if not train_set.isdisjoint(test_set):
@@ -112,6 +111,14 @@ def validate_persisted_splits(
             "Regenerate train/validation/test splits."
         )
 
+
+def _validate_split_sizes(
+    train_ids: "pd.Index",
+    val_ids: "pd.Index",
+    test_ids: "pd.Index",
+    manifest: dict[str, object],
+) -> None:
+    """Validate that split sizes match manifest."""
     if manifest.get("train_rows") is not None and len(train_ids) != manifest["train_rows"]:
         raise RuntimeError("Persisted train split size does not match data_manifest.json.")
     if manifest.get("validation_rows") is not None and len(val_ids) != manifest["validation_rows"]:
@@ -123,6 +130,32 @@ def validate_persisted_splits(
         and len(train_ids) + len(val_ids) + len(test_ids) != manifest["total_rows"]
     ):
         raise RuntimeError("Persisted total split size does not match data_manifest.json.")
+
+
+def validate_persisted_splits(
+    df: pd.DataFrame,
+    train_ids: "pd.Index",
+    val_ids: "pd.Index",
+    test_ids: "pd.Index",
+    manifest: dict[str, object],
+) -> None:
+    """Validate persisted splits against the current dataset."""
+    current_sha = calculate_file_sha256(DATA_PATH)
+    stored_sha = manifest.get("dataset_sha256")
+
+    if current_sha != stored_sha:
+        raise RuntimeError(
+            "Dataset has changed since the persisted splits were created. "
+            "Regenerate train/validation/test splits."
+        )
+
+    _validate_split_manifest(manifest)
+
+    train_set, val_set, test_set = set(train_ids), set(val_ids), set(test_ids)
+    current_ids = set(df.index)
+
+    _validate_split_ids(train_set, val_set, test_set, current_ids)
+    _validate_split_sizes(train_ids, val_ids, test_ids, manifest)
 
 
 def split_data(
