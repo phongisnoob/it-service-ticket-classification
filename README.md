@@ -10,7 +10,7 @@ I started this project to compare a classical TF-IDF + Logistic Regression basel
 Most classification tutorials just try to maximize accuracy. In a real helpdesk, you can't afford to auto-route ambiguous tickets. This project focuses on the practical trade-off between coverage (how many tickets we automate) and accuracy (how often the automated routing is correct).
 
 Key details:
-- Trained on a public dataset of **47,837 tickets**, stratified into a 70/15/15 split.
+- Trained on a public dataset of **47,837 tickets**, stratified into a 70/10/10/10 split (train/tune/calibration/test).
 - The routing threshold is tuned strictly on the validation set, keeping the test set isolated.
 - The API returns the top 3 categories, the confidence score, and a boolean flag indicating if the ticket needs manual review.
 
@@ -74,6 +74,8 @@ The raw CSV is intentionally excluded from Git. Download it and place it at:
 ```text
 data/raw/all_tickets_processed_improved_v3.csv
 ```
+
+The pipeline uses a **70/10/10/10 stratified split** (train/tune/calibration/test). The tune set is used for threshold selection. The calibration set is a separate held-out partition used solely to measure post-hoc calibration quality (ECE and Brier score) after the model is fitted — it is not used during training. `CalibratedClassifierCV` applies internal 5-fold cross-validation on the training set itself, independent of this split.
 
 The category distribution is imbalanced, which is why model comparison includes **Macro F1** in addition to overall accuracy.
 
@@ -142,7 +144,10 @@ The experimental TextCNN uses learned embeddings, parallel 1D convolutions with 
 │   ├── plot_results.py             # README/report figures
 │   └── inference.py                # Baseline/CNN prediction backends
 ├── tests/
-│   ├── test_api.py                 # FastAPI unit tests
+│   ├── test_api.py                 # FastAPI contract tests (endpoints, response shape, routing logic)
+│   ├── test_api_hardening.py       # Security/hardening tests (auth modes, Prometheus label safety, input limits)
+│   ├── test_ml_smoke.py            # Baseline predictor smoke test (train, serialize, load, and predict end-to-end)
+│   ├── test_validation_design.py   # Data-split integrity and threshold selection (Clopper-Pearson bounds, disjointness, determinism)
 │   └── test_integration.py         # ML pipeline integration tests
 ├── .github/
 │   └── workflows/ci.yml            # GitHub Actions CI
@@ -160,7 +165,7 @@ Model binaries (`*.joblib`, `*.pt`) and the raw dataset are ignored by Git. A fr
 
 ```bash
 git clone <YOUR_REPOSITORY_URL>
-cd it-ticket-classification
+cd it-service-ticket-classification
 ```
 
 ### 2. Create a virtual environment
@@ -182,6 +187,14 @@ source .venv/bin/activate
 ### 3. Install dependencies
 
 The codebase requires NumPy, pandas, scikit-learn, joblib, Matplotlib, PyTorch, FastAPI, Uvicorn, and pytest.
+
+| File | Purpose |
+|---|---|
+| `requirements-dev.txt` | Development + testing: all runtime deps plus pytest, ruff, mypy, and Prometheus client |
+| `requirements-cuda.txt` | GPU/CUDA PyTorch override — replaces the CPU torch wheel for training or CNN serving on a GPU host |
+| `requirements-train.txt` | Training-time extras: CNN runtime deps (filelock, fsspec, etc.) plus Matplotlib for evaluation plots |
+| `requirements-cnn.txt` | CNN inference runtime: PyTorch dependency shims (filelock, fsspec, networkx, sympy, jinja2) |
+| `requirements-mlops.txt` | MLOps tooling: DVC (with S3 remote support), MLflow, PyYAML, and SciPy |
 
 ```bash
 pip install -r requirements-dev.txt
@@ -308,7 +321,7 @@ docker run --rm -p 8000:8000 -e MODEL_BACKEND=cnn -e APP_ENV=production -e API_K
 
 PowerShell example:
 ```powershell
-docker run --rm -p 8000:8000 -e MODEL_BACKEND="baseline" it-ticket-api
+docker run --rm -p 8000:8000 -e MODEL_BACKEND="baseline" -e APP_ENV=production -e API_KEY=test_key it-ticket-baseline:test
 ```
 
 ## Optional: running scripts directly
@@ -354,19 +367,38 @@ Generated outputs are kept under [`reports/metrics/`](reports/metrics/) and [`re
 
 ## Tests
 
-Run the API test suite from the repository root:
+Run the full test suite from the repository root:
 
 ```bash
-python -m pytest -v
+python -m pytest -v tests/test_api.py tests/test_api_hardening.py tests/test_ml_smoke.py tests/test_validation_design.py tests/test_integration.py
 ```
 
-The current tests cover:
+The tests are grouped by concern:
 
-- root and health endpoints
-- valid prediction responses
-- confidence/threshold routing logic
-- descending top-3 scores
-- rejection of empty ticket text
+**API contract** (`test_api.py`)
+- Root, health, and predict endpoint responses
+- `needs_manual_review` routing flag matches confidence vs threshold
+- Top-3 categories returned in descending probability order
+- Empty-text rejection (HTTP 422)
+
+**Security / hardening** (`test_api_hardening.py`)
+- Auth modes: open (no key required) and keyed (401 on missing/wrong key)
+- Prometheus label safety: arbitrary URLs use `UNMATCHED` sentinel, preventing unbounded cardinality
+- Oversized and blank inputs rejected (HTTP 422)
+- `/metrics` endpoint reachable
+
+**ML smoke test** (`test_ml_smoke.py`)
+- Trains a real TF-IDF + Logistic Regression pipeline on synthetic data, serializes it, loads it through `BaselinePredictor`, and asserts correct output structure, confidence bounds, and artifact SHA-256 handling
+
+**Validation / data-split integrity** (`test_validation_design.py`)
+- Clopper-Pearson and simultaneous lower-bound calculations
+- Threshold selection determinism and coverage-maximizing choice
+- Train/tune/test split disjointness
+- Blank-row rejection and SHA-256 row-ID uniqueness
+- Per-class Wilson lower-bound non-negativity
+
+**Integration** (`test_integration.py`)
+- End-to-end ML pipeline checks requiring DVC-pulled artifacts
 
 ## Design decisions
 
