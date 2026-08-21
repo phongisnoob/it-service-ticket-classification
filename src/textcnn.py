@@ -1,3 +1,5 @@
+from typing import cast
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -32,4 +34,5 @@ class TextCNN(nn.Module):
         features = [F.adaptive_max_pool1d(F.relu(conv(x)), 1).squeeze(2) for conv in self.convs]
         x = torch.cat(features, dim=1)
         x = self.dropout(x)
-        return self.fc(x)
+        return cast(torch.Tensor, self.fc(x))
+
