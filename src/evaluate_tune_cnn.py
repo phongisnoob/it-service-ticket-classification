@@ -91,7 +91,7 @@ def main() -> None:
     predicted_labels = [labels[index] for index in all_predictions]
 
     tune_metrics = calculate_metrics(true_labels, np.asarray(predicted_labels))
-    with open(METRICS_DIR / "cnn_val_metrics.json", "w", encoding="utf-8") as f:
+    with open(METRICS_DIR / "cnn_tune_metrics.json", "w", encoding="utf-8") as f:
         json.dump(tune_metrics, f, indent=4)
 
     calib_metrics = calculate_calibration_metrics(
@@ -120,7 +120,7 @@ def main() -> None:
     )
     results["correct"] = results["true_label"] == results["predicted_label"]
 
-    output_path = METRICS_DIR / "cnn_val_predictions.csv"
+    output_path = METRICS_DIR / "cnn_tune_predictions.csv"
     results.to_csv(output_path, index=False)
 
     print(f"Saved tune predictions to: {output_path}")

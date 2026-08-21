@@ -46,7 +46,7 @@ stages:
       - artifacts/baseline_metadata.json:
           cache: false
     metrics:
-      - reports/metrics/baseline_val_metrics.json:
+      - reports/metrics/baseline_tune_metrics.json:
           cache: false
 
   evaluate_tune_baseline:
@@ -60,7 +60,7 @@ stages:
       - src/evaluate.py
       - src/paths.py
     outs:
-      - reports/metrics/baseline_val_predictions.csv:
+      - reports/metrics/baseline_tune_predictions.csv:
           cache: false
     metrics:
       - reports/metrics/baseline_tune_calibration_metrics.json:
@@ -83,7 +83,7 @@ stages:
   analyze_threshold_baseline:
     cmd: python -m src.analyze_threshold_baseline
     deps:
-      - reports/metrics/baseline_val_predictions.csv
+      - reports/metrics/baseline_tune_predictions.csv
       - artifacts/baseline.joblib
       - src/analyze_threshold_baseline.py
       - src/hashing.py
@@ -181,10 +181,10 @@ stages:
       - src/textcnn.py
       - src/paths.py
     outs:
-      - reports/metrics/cnn_val_predictions.csv:
+      - reports/metrics/cnn_tune_predictions.csv:
           cache: false
     metrics:
-      - reports/metrics/cnn_val_metrics.json:
+      - reports/metrics/cnn_tune_metrics.json:
           cache: false
       - reports/metrics/cnn_tune_calibration_metrics.json:
           cache: false
@@ -210,7 +210,7 @@ stages:
   analyze_threshold_cnn:
     cmd: python -m src.analyze_threshold_cnn
     deps:
-      - reports/metrics/cnn_val_predictions.csv
+      - reports/metrics/cnn_tune_predictions.csv
       - artifacts/cnn/textcnn.pt
       - src/analyze_threshold_cnn.py
       - src/hashing.py
@@ -271,9 +271,9 @@ stages:
   select_model:
     cmd: python -m src.select_model
     deps:
-      - reports/metrics/baseline_val_predictions.csv
+      - reports/metrics/baseline_tune_predictions.csv
       - reports/metrics/baseline_selected_threshold.json
-      - reports/metrics/cnn_val_predictions.csv
+      - reports/metrics/cnn_tune_predictions.csv
       - reports/metrics/selected_threshold.json
       - src/select_model.py
       - src/paths.py

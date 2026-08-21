@@ -4,7 +4,8 @@ import sys
 from src.paths import CNN_MODEL_PATH, METRICS_DIR, ROOT_DIR
 
 BASELINE_OUTPUTS = [
-    "baseline_val_predictions.csv",
+    "baseline_tune_predictions.csv",
+    "baseline_tune_metrics.json",
     "baseline_threshold_analysis.csv",
     "baseline_selected_threshold.json",
     "baseline_metrics.json",
@@ -12,7 +13,8 @@ BASELINE_OUTPUTS = [
 ]
 
 CNN_OUTPUTS = [
-    "cnn_val_predictions.csv",
+    "cnn_tune_predictions.csv",
+    "cnn_tune_metrics.json",
     "threshold_analysis.csv",
     "selected_threshold.json",
     "cnn_metrics.json",
@@ -63,7 +65,7 @@ def main() -> None:
 
     remove_stale_outputs(BASELINE_OUTPUTS + COMMON_OUTPUTS)
 
-    run_module("src.evaluate_val_baseline")
+    run_module("src.evaluate_tune_baseline")
     run_module("src.analyze_threshold_baseline")
     run_module("src.evaluate_baseline")
     run_module("src.evaluate_routing_baseline")
@@ -74,7 +76,7 @@ def main() -> None:
 
         remove_stale_outputs(CNN_OUTPUTS)
 
-        run_module("src.evaluate_val_cnn")
+        run_module("src.evaluate_tune_cnn")
         run_module("src.analyze_threshold_cnn")
         run_module("src.evaluate_cnn")
         run_module("src.evaluate_routing")

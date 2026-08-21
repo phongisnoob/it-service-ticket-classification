@@ -20,7 +20,7 @@ from src.paths import METRICS_DIR
 
 PREDICTIONS_FILES = {
     "cnn": METRICS_DIR / "cnn_test_predictions.csv",
-    "baseline": METRICS_DIR / "baseline_val_predictions.csv",
+    "baseline": METRICS_DIR / "baseline_tune_predictions.csv",
 }
 
 HIGH_CONFIDENCE_THRESHOLD = 0.80

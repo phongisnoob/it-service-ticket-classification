@@ -13,7 +13,7 @@ from src.hashing import calculate_file_sha256
 from src.paths import METRICS_DIR, ROOT_DIR
 from src.routing_utils import per_class_accepted_stats, select_threshold
 
-INPUT_PATH = METRICS_DIR / "cnn_val_predictions.csv"
+INPUT_PATH = METRICS_DIR / "cnn_tune_predictions.csv"
 OUTPUT_PATH = METRICS_DIR / "threshold_analysis.csv"
 THRESHOLD_PATH = METRICS_DIR / "selected_threshold.json"
 MODEL_PATH = ROOT_DIR / "artifacts" / "cnn" / "textcnn.pt"

@@ -46,7 +46,7 @@ def main() -> None:
     )
 
     results["correct"] = results["true_label"] == results["predicted_label"]
-    output_path = METRICS_DIR / "baseline_val_predictions.csv"
+    output_path = METRICS_DIR / "baseline_tune_predictions.csv"
     results.to_csv(output_path, index=False)
 
     calibration = calculate_calibration_metrics(

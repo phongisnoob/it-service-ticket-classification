@@ -58,10 +58,10 @@ def train_baseline() -> tuple[CalibratedClassifierCV, dict[str, float]]:
     calibrated_model.fit(X_train, y_train)
 
     tune_predictions = calibrated_model.predict(X_tune)
-    val_metrics = calculate_metrics(y_tune, tune_predictions)
+    tune_metrics = calculate_metrics(y_tune, tune_predictions)
 
     print("\nTune metrics")
-    for key, value in val_metrics.items():
+    for key, value in tune_metrics.items():
         print(f"  {key}: {value:.4f}")
 
     model_path = ARTIFACT_DIR / "baseline.joblib"
@@ -97,24 +97,24 @@ def train_baseline() -> tuple[CalibratedClassifierCV, dict[str, float]]:
         "git_commit": git_commit,
         "random_seed": 42,
         "hyperparameters": hyperparameters,
-        "val_metrics": val_metrics,
+        "tune_metrics": tune_metrics,
     }
 
     with open(ARTIFACT_DIR / "baseline_metadata.json", "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=4)
 
-    with open(METRICS_DIR / "baseline_val_metrics.json", "w", encoding="utf-8") as f:
-        json.dump(val_metrics, f, indent=4)
+    with open(METRICS_DIR / "baseline_tune_metrics.json", "w", encoding="utf-8") as f:
+        json.dump(tune_metrics, f, indent=4)
 
     with start_run(run_name="train_baseline", model_backend="baseline"):
         log_params(hyperparameters)
-        log_metrics(val_metrics)
+        log_metrics(tune_metrics)
         log_artifact(str(model_path), "artifacts")
         log_dict_as_artifact(metadata, "baseline_metadata.json")
 
     print(f"\nModel saved to {model_path} (SHA-256: {model_sha256[:12]}...)")
 
-    return calibrated_model, val_metrics
+    return calibrated_model, tune_metrics
 
 
 def main() -> None:

@@ -49,11 +49,11 @@ class ModelPaths(TypedDict):
 
 MODEL_CONFIGS: dict[str, ModelPaths] = {
     "baseline": {
-        "predictions": METRICS_DIR / "baseline_val_predictions.csv",
+        "predictions": METRICS_DIR / "baseline_tune_predictions.csv",
         "threshold": METRICS_DIR / "baseline_selected_threshold.json",
     },
     "cnn": {
-        "predictions": METRICS_DIR / "cnn_val_predictions.csv",
+        "predictions": METRICS_DIR / "cnn_tune_predictions.csv",
         "threshold": METRICS_DIR / "selected_threshold.json",
     },
 }

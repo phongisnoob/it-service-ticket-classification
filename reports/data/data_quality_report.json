@@ -8,17 +8,15 @@
     "rows_after_cleaning": 47837,
     "label_schema": [
         "Access",
+        "Administrative rights",
         "HR Support",
         "Hardware",
         "Internal Project",
         "Miscellaneous",
-        "Network",
         "Purchase",
         "Storage"
     ],
-    "unexpected_labels": [
-        "Administrative rights"
-    ],
+    "unexpected_labels": [],
     "split_counts": {
         "train": 33485,
         "tune": 4779,

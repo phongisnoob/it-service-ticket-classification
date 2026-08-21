@@ -23,7 +23,7 @@ class FakePredictor:
             "needs_manual_review": False,
             "top_3": [
                 {"category": "Access", "probability": 0.95},
-                {"category": "Network", "probability": 0.03},
+                {"category": "Administrative rights", "probability": 0.03},
                 {"category": "Hardware", "probability": 0.02},
             ],
         }
