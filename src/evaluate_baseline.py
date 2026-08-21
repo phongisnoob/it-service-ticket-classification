@@ -4,7 +4,7 @@ import joblib
 
 from src.data import (
     load_data,
-    split_data,
+    load_splits,
 )
 from src.evaluate import (
     calculate_metrics,
@@ -19,10 +19,7 @@ MODEL_PATH = ARTIFACT_DIR / "baseline.joblib"
 def main() -> None:
     model = joblib.load(MODEL_PATH)
 
-    _, _, test_df = split_data(
-        load_data(),
-        random_state=42,
-    )
+    test_df = load_splits(load_data()).test
 
     predictions = model.predict(test_df["Document"])
 

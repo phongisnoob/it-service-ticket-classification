@@ -97,7 +97,7 @@ The experimental TextCNN uses learned embeddings, parallel 1D convolutions with 
 
 ## System details
 
-**Data handling:** The script checks for identical tickets that have conflicting labels and drops them before training. It also saves the exact train/validation/test IDs alongside a SHA-256 hash of the source dataset. If you modify the CSV later, the pipeline will refuse to load the stale splits, preventing accidental train/test leakage.
+**Data handling:** The script checks for identical tickets that have conflicting labels and drops them before training. It also saves the exact train/tune/calibration/test IDs alongside a SHA-256 hash of the source dataset. If you modify the CSV later, the pipeline will refuse to load the stale splits, preventing accidental train/test leakage.
 
 **Model integrity:** It's easy to deploy a new model but forget to update its threshold config. To prevent this, the JSON config stores the SHA-256 hash of the model that generated it. The API raises an exception at startup if the hashes don't match. 
 
@@ -126,18 +126,20 @@ The experimental TextCNN uses learned embeddings, parallel 1D convolutions with 
 ├── src/
 │   ├── data.py                     # Loading, deduplication, stratified splitting
 │   ├── evaluate.py                 # Shared classification & calibration metrics
-│   ├── routing_utils.py            # Bootstrap CI for routing evaluation
+│   ├── routing_utils.py            # Threshold selection via exact Clopper-Pearson bounds + Bonferroni correction
 │   ├── train_baseline.py           # TF-IDF + Logistic Regression training
-│   ├── evaluate_val_baseline.py    # Baseline validation predictions
+│   ├── evaluate_tune_baseline.py   # Baseline tune-set predictions + calibration metrics (used for threshold selection)
 │   ├── analyze_threshold_baseline.py
+│   ├── evaluate_calibration_baseline.py  # Baseline calibration quality on held-out calibration partition
 │   ├── evaluate_routing_baseline.py
 │   ├── evaluate_baseline.py        # Baseline test evaluation
 │   ├── cnn_data.py                 # CNN tokenization/vocabulary/dataset
 │   ├── textcnn.py                  # TextCNN architecture
 │   ├── train_cnn.py                # TextCNN training + early stopping
 │   ├── evaluate_cnn.py             # TextCNN test evaluation
-│   ├── evaluate_val_cnn.py         # TextCNN validation predictions
+│   ├── evaluate_tune_cnn.py        # TextCNN tune-set predictions + calibration metrics
 │   ├── analyze_threshold_cnn.py    # CNN threshold analysis
+│   ├── evaluate_calibration_cnn.py # CNN calibration quality on held-out calibration partition
 │   ├── compare_models.py           # Model comparison table
 │   ├── select_model.py             # Automated production model selection
 │   ├── error_summary.py            # CNN error analysis
@@ -370,7 +372,7 @@ Generated outputs are kept under [`reports/metrics/`](reports/metrics/) and [`re
 Run the full test suite from the repository root:
 
 ```bash
-python -m pytest -v tests/test_api.py tests/test_api_hardening.py tests/test_ml_smoke.py tests/test_validation_design.py tests/test_integration.py
+python -m pytest -v tests/test_api.py tests/test_api_hardening.py tests/test_ml_smoke.py tests/test_validation_design.py tests/test_integration.py tests/test_data_split.py
 ```
 
 The tests are grouped by concern:
@@ -389,6 +391,9 @@ The tests are grouped by concern:
 
 **ML smoke test** (`test_ml_smoke.py`)
 - Trains a real TF-IDF + Logistic Regression pipeline on synthetic data, serializes it, loads it through `BaselinePredictor`, and asserts correct output structure, confidence bounds, and artifact SHA-256 handling
+
+**Data-split integrity** (`test_data_split.py`)
+- SHA-256 row IDs, split disjointness, blank-row rejection, manifest consistency
 
 **Validation / data-split integrity** (`test_validation_design.py`)
 - Clopper-Pearson and simultaneous lower-bound calculations

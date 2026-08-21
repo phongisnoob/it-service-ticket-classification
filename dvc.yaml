@@ -16,7 +16,7 @@ stages:
           cache: false
       - reports/data/tune_ids.csv:
           cache: false
-      - reports/data/calibration_ids.csv:  # reserved for post-hoc calibration analysis
+      - reports/data/calibration_ids.csv:
           cache: false
       - reports/data/test_ids.csv:
           cache: false
@@ -27,7 +27,6 @@ stages:
       - data/raw/all_tickets_processed_improved_v3.csv
       - reports/data/train_ids.csv
       - reports/data/tune_ids.csv
-      - reports/data/calibration_ids.csv
       - reports/data/data_manifest.json
       - src/train_baseline.py
       - src/data.py
@@ -50,14 +49,13 @@ stages:
       - reports/metrics/baseline_val_metrics.json:
           cache: false
 
-  evaluate_val_baseline:
-    cmd: python -m src.evaluate_val_baseline
+  evaluate_tune_baseline:
+    cmd: python -m src.evaluate_tune_baseline
     deps:
       - artifacts/baseline.joblib
       - reports/data/tune_ids.csv
-      - reports/data/calibration_ids.csv
       - reports/data/data_manifest.json
-      - src/evaluate_val_baseline.py
+      - src/evaluate_tune_baseline.py
       - src/data.py
       - src/evaluate.py
       - src/paths.py
@@ -65,7 +63,21 @@ stages:
       - reports/metrics/baseline_val_predictions.csv:
           cache: false
     metrics:
-      - reports/metrics/baseline_calibration_metrics.json:
+      - reports/metrics/baseline_tune_calibration_metrics.json:
+          cache: false
+
+  evaluate_calibration_baseline:
+    cmd: python -m src.evaluate_calibration_baseline
+    deps:
+      - artifacts/baseline.joblib
+      - reports/data/calibration_ids.csv
+      - reports/data/data_manifest.json
+      - src/evaluate_calibration_baseline.py
+      - src/data.py
+      - src/evaluate.py
+      - src/paths.py
+    metrics:
+      - reports/metrics/baseline_calibration_holdout_metrics.json:
           cache: false
 
   analyze_threshold_baseline:
@@ -89,7 +101,6 @@ stages:
     deps:
       - artifacts/baseline.joblib
       - reports/data/test_ids.csv
-      - reports/data/calibration_ids.csv
       - reports/data/data_manifest.json
       - src/evaluate_baseline.py
       - src/data.py
@@ -106,7 +117,6 @@ stages:
       - artifacts/baseline.joblib
       - reports/metrics/baseline_selected_threshold.json
       - reports/data/test_ids.csv
-      - reports/data/calibration_ids.csv
       - reports/data/data_manifest.json
       - src/evaluate_routing_baseline.py
       - src/data.py
@@ -123,7 +133,6 @@ stages:
       - data/raw/all_tickets_processed_improved_v3.csv
       - reports/data/train_ids.csv
       - reports/data/tune_ids.csv
-      - reports/data/calibration_ids.csv
       - reports/data/data_manifest.json
       - src/train_cnn.py
       - src/data.py
@@ -157,17 +166,16 @@ stages:
       - artifacts/cnn/artifact_manifest.json:
           cache: false
 
-  evaluate_val_cnn:
-    cmd: python -m src.evaluate_val_cnn
+  evaluate_tune_cnn:
+    cmd: python -m src.evaluate_tune_cnn
     deps:
       - artifacts/cnn/textcnn.pt
       - artifacts/cnn/vocab.json
       - artifacts/cnn/labels.json
       - artifacts/cnn/config.json
       - reports/data/tune_ids.csv
-      - reports/data/calibration_ids.csv
       - reports/data/data_manifest.json
-      - src/evaluate_val_cnn.py
+      - src/evaluate_tune_cnn.py
       - src/data.py
       - src/cnn_data.py
       - src/textcnn.py
@@ -178,7 +186,25 @@ stages:
     metrics:
       - reports/metrics/cnn_val_metrics.json:
           cache: false
-      - reports/metrics/cnn_val_calibration_metrics.json:
+      - reports/metrics/cnn_tune_calibration_metrics.json:
+          cache: false
+
+  evaluate_calibration_cnn:
+    cmd: python -m src.evaluate_calibration_cnn
+    deps:
+      - artifacts/cnn/textcnn.pt
+      - artifacts/cnn/vocab.json
+      - artifacts/cnn/labels.json
+      - artifacts/cnn/config.json
+      - reports/data/calibration_ids.csv
+      - reports/data/data_manifest.json
+      - src/evaluate_calibration_cnn.py
+      - src/data.py
+      - src/cnn_data.py
+      - src/textcnn.py
+      - src/paths.py
+    metrics:
+      - reports/metrics/cnn_calibration_holdout_metrics.json:
           cache: false
 
   analyze_threshold_cnn:
@@ -205,7 +231,6 @@ stages:
       - artifacts/cnn/labels.json
       - artifacts/cnn/config.json
       - reports/data/test_ids.csv
-      - reports/data/calibration_ids.csv
       - reports/data/data_manifest.json
       - src/evaluate_cnn.py
       - src/data.py
@@ -235,7 +260,7 @@ stages:
     cmd: python -m src.compare_models
     deps:
       - reports/metrics/baseline_metrics.json
-      - reports/metrics/baseline_calibration_metrics.json
+      - reports/metrics/baseline_tune_calibration_metrics.json
       - reports/metrics/cnn_metrics.json
       - src/compare_models.py
       - src/paths.py

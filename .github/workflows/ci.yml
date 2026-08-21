@@ -74,6 +74,7 @@ jobs:
             reports/metrics/selected_threshold.json \
             reports/metrics/model_selection.json \
             reports/data/train_ids.csv reports/data/tune_ids.csv \
+            reports/data/calibration_ids.csv \
             reports/data/test_ids.csv reports/data/data_manifest.json
 
       - name: Verify artifact hashes
@@ -164,6 +165,7 @@ jobs:
             reports/metrics/selected_threshold.json \
             reports/metrics/model_selection.json \
             reports/data/train_ids.csv reports/data/tune_ids.csv \
+            reports/data/calibration_ids.csv \
             reports/data/test_ids.csv reports/data/data_manifest.json
 
       - name: Build Docker image (baseline backend)

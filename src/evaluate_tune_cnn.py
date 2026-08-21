@@ -1,3 +1,15 @@
+"""Evaluate the TextCNN model on the tune set.
+
+Produces:
+- Tune-set predictions CSV (used by threshold selection)
+- Tune-set calibration metrics (ECE, Brier score)
+
+Note: these calibration metrics are measured on the TUNE set — the same
+partition used for threshold selection.  For held-out calibration quality
+assessment on the independent CALIBRATION partition, see
+``evaluate_calibration_cnn.py``.
+"""
+
 import json
 
 import numpy as np
@@ -6,7 +18,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from src.cnn_data import TicketDataset
-from src.data import load_data, split_data
+from src.data import load_data, load_splits
 from src.evaluate import calculate_calibration_metrics, calculate_metrics
 from src.paths import METRICS_DIR, ROOT_DIR
 from src.textcnn import TextCNN
@@ -25,20 +37,21 @@ def main() -> None:
         config = json.load(f)
 
     df = load_data()
-    _, val_df, _ = split_data(df, random_state=42)
+    splits = load_splits(df)
+    tune_df = splits.tune
 
     label_to_id = {label: index for index, label in enumerate(labels)}
-    y_val = [label_to_id[label] for label in val_df["Topic_group"]]
+    y_tune = [label_to_id[label] for label in tune_df["Topic_group"]]
 
-    val_dataset = TicketDataset(
-        texts=val_df["Document"].tolist(),
-        labels=y_val,
+    tune_dataset = TicketDataset(
+        texts=tune_df["Document"].tolist(),
+        labels=y_tune,
         vocab=vocab,
         max_length=int(config["max_length"]),
     )
 
-    val_loader = DataLoader(
-        val_dataset,
+    tune_loader = DataLoader(
+        tune_dataset,
         batch_size=64,
         shuffle=False,
     )
@@ -66,7 +79,7 @@ def main() -> None:
     all_predictions, all_confidences = [], []
 
     with torch.no_grad():
-        for inputs, targets in val_loader:
+        for inputs, targets in tune_loader:
             inputs = inputs.to(device)
             logits = model(inputs)
             probabilities = torch.softmax(logits, dim=1)
@@ -74,32 +87,32 @@ def main() -> None:
             all_predictions.extend(predictions.cpu().tolist())
             all_confidences.extend(confidence.cpu().tolist())
 
-    true_labels = [labels[index] for index in y_val]
+    true_labels = [labels[index] for index in y_tune]
     predicted_labels = [labels[index] for index in all_predictions]
 
-    val_metrics = calculate_metrics(true_labels, np.asarray(predicted_labels))
+    tune_metrics = calculate_metrics(true_labels, np.asarray(predicted_labels))
     with open(METRICS_DIR / "cnn_val_metrics.json", "w", encoding="utf-8") as f:
-        json.dump(val_metrics, f, indent=4)
+        json.dump(tune_metrics, f, indent=4)
 
     calib_metrics = calculate_calibration_metrics(
         y_true_labels=true_labels,
         y_pred_labels=np.asarray(predicted_labels),
         y_confidence=np.asarray(all_confidences),
     )
-    with open(METRICS_DIR / "cnn_val_calibration_metrics.json", "w", encoding="utf-8") as f:
+    with open(METRICS_DIR / "cnn_tune_calibration_metrics.json", "w", encoding="utf-8") as f:
         json.dump(calib_metrics, f, indent=4)
 
-    print("\nCNN Validation Metrics")
-    for key, value in val_metrics.items():
+    print("\nCNN Tune Metrics")
+    for key, value in tune_metrics.items():
         print(f"{key}: {value:.4f}")
 
-    print("\nCalibration Quality:")
+    print("\nCalibration Quality (tune set):")
     print(f"Brier score: {calib_metrics['top_label_brier_score']:.6f}")
     print(f"Expected Calibration Error (ECE): {calib_metrics['expected_calibration_error']:.6f}")
 
     results = pd.DataFrame(
         {
-            "ticket_id": val_df.index.to_numpy(),
+            "ticket_id": tune_df.index.to_numpy(),
             "true_label": true_labels,
             "predicted_label": predicted_labels,
             "confidence": all_confidences,
@@ -110,8 +123,8 @@ def main() -> None:
     output_path = METRICS_DIR / "cnn_val_predictions.csv"
     results.to_csv(output_path, index=False)
 
-    print(f"Saved validation predictions to: {output_path}")
-    print("Validation accuracy:", results["correct"].mean())
+    print(f"Saved tune predictions to: {output_path}")
+    print("Tune accuracy:", results["correct"].mean())
 
 
 if __name__ == "__main__":

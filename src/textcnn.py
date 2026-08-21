@@ -32,4 +32,4 @@ class TextCNN(nn.Module):
         features = [F.adaptive_max_pool1d(F.relu(conv(x)), 1).squeeze(2) for conv in self.convs]
         x = torch.cat(features, dim=1)
         x = self.dropout(x)
-        return self.fc(x)  # type: ignore[no-any-return]
+        return self.fc(x)

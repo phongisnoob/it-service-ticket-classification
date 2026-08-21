@@ -31,9 +31,9 @@ def test_ml_smoke() -> None:
             "Access",
             "Access",
             "Access",
-            "Network",
-            "Network",
-            "Network",
+            "Administrative rights",
+            "Administrative rights",
+            "Administrative rights",
             "Hardware",
             "Hardware",
             "Hardware",
@@ -66,7 +66,7 @@ def test_ml_smoke() -> None:
 
             # 7. Validate confidence, threshold, output structure, and artifact hash handling
             assert "category" in prediction
-            assert prediction["category"] in ["Access", "Network", "Hardware"]
+            assert prediction["category"] in ["Access", "Administrative rights", "Hardware"]
             assert "confidence" in prediction
             assert 0.0 <= prediction["confidence"] <= 1.0
             assert prediction["threshold"] == 0.85

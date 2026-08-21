@@ -48,11 +48,16 @@ module = [
     "starlette.*",
     "mlflow.*",
     "prometheus_client.*",
-    "matplotlib.*"
+    "matplotlib.*",
+    "yaml.*"
 ]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = "app.*"
+module = [
+    "app.*",
+    "src.textcnn",
+    "src.cnn_data",
+]
 disallow_untyped_decorators = false
 disallow_subclassing_any = false

@@ -137,7 +137,7 @@ class TestDataIntegrity:
     def test_full_sha256_id_length(self) -> None:
         """Row IDs must be full 64-char SHA-256 hexdigests."""
         normalized = "cannot connect to wifi"
-        label = "Network"
+        label = "Administrative rights"
         row_id = hashlib.sha256(
             (normalized + "|" + label).encode("utf-8")
         ).hexdigest()
@@ -155,8 +155,10 @@ class TestDataIntegrity:
         """Same text with different labels must produce different IDs."""
         normalized = "cannot login"
         id_access = hashlib.sha256((normalized + "|Access").encode()).hexdigest()
-        id_network = hashlib.sha256((normalized + "|Network").encode()).hexdigest()
-        assert id_access != id_network
+        id_admin = hashlib.sha256(
+            (normalized + "|Administrative rights").encode()
+        ).hexdigest()
+        assert id_access != id_admin
 
 
 # ---------------------------------------------------------------------------

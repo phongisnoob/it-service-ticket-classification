@@ -19,8 +19,8 @@ from src.hashing import calculate_file_sha256
 from src.paths import DATA_PATH, REPORT_DATA_DIR
 
 EXPECTED_LABELS = frozenset(
-    {"Access", "Hardware", "HR Support", "Internal Project", "Network",
-     "Miscellaneous", "Purchase", "Storage"}
+    {"Access", "Administrative rights", "Hardware", "HR Support",
+     "Internal Project", "Miscellaneous", "Purchase", "Storage"}
 )
 
 

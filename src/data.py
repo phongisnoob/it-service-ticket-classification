@@ -1,18 +1,22 @@
 """Dataset loading and deterministic split utilities.
 
 The ``prepare_data`` DVC stage (src/prepare_data.py) is the **sole** producer
-of split IDs and the data quality report.  ``load_data`` and ``split_data``
+of split IDs and the data quality report.  ``load_splits`` and ``split_data``
 consume those persisted outputs so every downstream stage uses identical
 partitions.
 
 Canonical split design (70 / 10 / 10 / 10):
     train           — model fitting
     tune            — threshold selection (never used for training)
-    calibration     — reserved for post-hoc calibration quality measurement
+    calibration     — held-out calibration quality measurement (ECE, Brier);
+                      never used for training or threshold selection
     test            — final held-out evaluation (never used before final report)
 
-``split_data()`` returns (train, tune, test).  The calibration set is
-available separately via ``load_calibration_split()``.
+``load_splits()`` returns a ``DataSplits`` dataclass exposing all four
+partitions as named attributes.  ``split_data()`` is a backward-compatible
+wrapper that returns ``(train, tune, test)`` — it does NOT return the
+calibration partition; use ``load_splits().calibration`` or
+``load_calibration_split()`` to access it.
 
 No fallback split generation: if persisted split files are absent, the
 function raises ``FileNotFoundError`` with a clear instruction.  This prevents
@@ -22,6 +26,7 @@ silent use of a different split ratio (e.g. 70/15/15) than the canonical one.
 import hashlib
 import json
 import re
+from dataclasses import dataclass
 
 import pandas as pd
 
@@ -31,6 +36,26 @@ from src.paths import DATA_PATH, REPORT_DATA_DIR
 
 def normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", str(text).lower().strip())
+
+
+@dataclass
+class DataSplits:
+    """Canonical four-way data partition.
+
+    Attributes:
+        train:       70% of cleaned dataset — used for model fitting.
+        tune:        10% — used for threshold selection (Clopper-Pearson).
+        calibration: 10% — held-out for post-hoc calibration evaluation only.
+        test:        10% — untouched until final held-out evaluation.
+
+    All four partitions are mutually disjoint and their union covers the
+    entire cleaned dataset (verified by ``validate_persisted_splits``).
+    """
+
+    train: pd.DataFrame
+    tune: pd.DataFrame
+    calibration: pd.DataFrame
+    test: pd.DataFrame
 
 
 def load_data(deduplicate: bool = True) -> pd.DataFrame:
@@ -99,17 +124,17 @@ def validate_persisted_splits(
     - All split IDs exist in the current dataset
     - All splits are mutually disjoint (train/tune/test + optional calib)
     - Split sizes match manifest
-    - For 3-way splits: train + tune + test covers the full dataset
-    - For 4-way splits: calibration disjointness is also verified
+    - For 4-way splits: all six pairwise intersections are empty
+    - Union of all persisted splits equals total_rows from manifest
 
     Args:
         df: The full cleaned dataset indexed by ticket_id.
         train_ids: IDs in the training split.
-        tune_ids: IDs in the tune/validation split (used for threshold selection).
+        tune_ids: IDs in the tune split (used for threshold selection).
         test_ids: IDs in the held-out test split.
         manifest: Parsed data_manifest.json dict.
-        calib_ids: Optional calibration split IDs. When provided, 4-way
-            disjointness is verified.
+        calib_ids: Optional calibration split IDs. When provided, all six
+            pairwise disjointness checks are performed.
 
     Raises:
         RuntimeError: On any integrity violation.
@@ -177,9 +202,8 @@ def validate_persisted_splits(
                 "Persisted calibration split size does not match data_manifest.json."
             )
 
-    # Collective exhaustiveness — only enforceable when calibration split known
-    has_calibration = calib_ids is not None
-    if has_calibration:
+    # Collective exhaustiveness
+    if calib_ids is not None:
         persisted_ids = train_set | tune_set | test_set | calib_set
     else:
         persisted_ids = train_set | tune_set | test_set
@@ -187,8 +211,7 @@ def validate_persisted_splits(
     if manifest.get("total_rows") is not None:
         total_manifest = int(str(manifest["total_rows"]))
         if len(persisted_ids) != total_manifest:
-            # Only enforce strict equality for 3-way splits (calib absent)
-            if not has_calibration:
+            if calib_ids is None:
                 missing = current_ids - persisted_ids
                 raise RuntimeError(
                     f"Persisted splits do not cover all dataset rows. "
@@ -219,35 +242,21 @@ def load_calibration_split(df: pd.DataFrame) -> pd.DataFrame:
     return df.loc[calib_ids].copy()
 
 
-def split_data(
-    df: pd.DataFrame | None = None,
-    random_state: int = 42,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Return (train, tune, test) DataFrames from persisted split IDs.
+def load_splits(df: pd.DataFrame | None = None) -> DataSplits:
+    """Load and validate all four canonical splits, returning a DataSplits object.
 
-    The canonical 70/10/10/10 split (train/tune/calibration/test) is produced
-    exclusively by the ``prepare_data`` DVC stage (src/prepare_data.py).
-    This function loads and validates those persisted IDs.
-
-    **No fallback split generation**: if the split files are absent, a
-    ``FileNotFoundError`` is raised with a clear instruction. This prevents
-    accidental use of a different split ratio.
-
-    The calibration split (10%) is not returned here to keep the existing
-    caller interface stable. Use ``load_calibration_split()`` to access it.
+    This is the canonical entry point for accessing all four partitions.
+    The calibration partition is included here; use ``splits.calibration``.
 
     Args:
         df: Pre-loaded dataset. If None, ``load_data()`` is called.
-        random_state: Accepted for API compatibility; the split is always
-            loaded from persisted files, so this parameter has no effect.
 
     Returns:
-        (train_df, tune_df, test_df) — non-overlapping DataFrames.
+        DataSplits with ``train``, ``tune``, ``calibration``, and ``test``.
 
     Raises:
         FileNotFoundError: If any required split file or manifest is absent.
-        RuntimeError: If integrity validation fails (hash mismatch, overlap,
-            size mismatch).
+        RuntimeError: If integrity validation fails.
     """
     if df is None:
         df = load_data(deduplicate=True)
@@ -262,6 +271,7 @@ def split_data(
         "train_ids.csv": train_ids_path,
         "tune_ids.csv": tune_ids_path,
         "test_ids.csv": test_ids_path,
+        "calibration_ids.csv": calib_ids_path,
         "data_manifest.json": manifest_path,
     }
     missing = [name for name, path in required.items() if not path.exists()]
@@ -277,13 +287,46 @@ def split_data(
     train_ids = pd.read_csv(train_ids_path)["id"].values
     tune_ids = pd.read_csv(tune_ids_path)["id"].values
     test_ids = pd.read_csv(test_ids_path)["id"].values
+    calib_ids = pd.Index(pd.read_csv(calib_ids_path)["id"].values)
 
-    # Load calibration IDs if present (always expected from canonical pipeline)
-    calib_ids: pd.Index | None = None
-    if calib_ids_path.exists():
-        calib_ids = pd.Index(pd.read_csv(calib_ids_path)["id"].values)
+    validate_persisted_splits(
+        df,
+        pd.Index(train_ids),
+        pd.Index(tune_ids),
+        pd.Index(test_ids),
+        manifest,
+        calib_ids,
+    )
 
-    validate_persisted_splits(df, pd.Index(train_ids), pd.Index(tune_ids),
-                               pd.Index(test_ids), manifest, calib_ids)
+    return DataSplits(
+        train=df.loc[train_ids].copy(),
+        tune=df.loc[tune_ids].copy(),
+        calibration=df.loc[calib_ids].copy(),
+        test=df.loc[test_ids].copy(),
+    )
 
-    return df.loc[train_ids].copy(), df.loc[tune_ids].copy(), df.loc[test_ids].copy()
+
+def split_data(
+    df: pd.DataFrame | None = None,
+    random_state: int = 42,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Return (train, tune, test) DataFrames from persisted split IDs.
+
+    This is a backward-compatible wrapper around ``load_splits()``.
+    The calibration split is NOT returned here; access it via
+    ``load_splits().calibration`` or ``load_calibration_split()``.
+
+    Args:
+        df: Pre-loaded dataset. If None, ``load_data()`` is called.
+        random_state: Accepted for API compatibility; has no effect — the
+            split is always loaded from persisted files.
+
+    Returns:
+        (train_df, tune_df, test_df) — non-overlapping DataFrames.
+
+    Raises:
+        FileNotFoundError: If any required split file or manifest is absent.
+        RuntimeError: If integrity validation fails.
+    """
+    splits = load_splits(df)
+    return splits.train, splits.tune, splits.test

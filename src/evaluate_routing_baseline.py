@@ -27,7 +27,7 @@ import joblib
 import numpy as np
 import pandas as pd
 
-from src.data import load_data, split_data
+from src.data import load_data, load_splits
 from src.paths import BASELINE_MODEL_PATH as MODEL_PATH
 from src.paths import METRICS_DIR
 from src.tracking import log_metrics, start_run
@@ -51,7 +51,7 @@ def main() -> None:
 
     model = joblib.load(MODEL_PATH)
     df = load_data()
-    _, _, test_df = split_data(df, random_state=42)
+    test_df = load_splits(df).test
 
     X_test = test_df["Document"]
     y_test = test_df["Topic_group"].values

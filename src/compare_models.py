@@ -7,7 +7,7 @@ from src.paths import METRICS_DIR
 
 def main() -> None:
     baseline_path = METRICS_DIR / "baseline_metrics.json"
-    baseline_calib_path = METRICS_DIR / "baseline_calibration_metrics.json"
+    baseline_calib_path = METRICS_DIR / "baseline_tune_calibration_metrics.json"
     cnn_path = METRICS_DIR / "cnn_metrics.json"
 
     if not baseline_path.exists() or not cnn_path.exists():

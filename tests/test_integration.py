@@ -40,7 +40,11 @@ def _model_and_threshold_compatible() -> bool:
 
 
 def _cnn_and_threshold_compatible() -> bool:
-    """Check if CNN model, manifest, and threshold SHA-256 hashes match."""
+    """Check if torch is installed and CNN model, manifest, and threshold SHA-256 hashes match."""
+    import importlib.util
+
+    if importlib.util.find_spec("torch") is None:
+        return False
     if not CNN_WEIGHTS_PATH.exists() or not CNN_THRESHOLD_PATH_LOCAL.exists() or not CNN_MANIFEST_PATH.exists():
         return False
     try:

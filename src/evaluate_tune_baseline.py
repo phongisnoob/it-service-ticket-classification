@@ -1,10 +1,22 @@
+"""Evaluate the baseline model on the tune set.
+
+Produces:
+- Tune-set predictions CSV (used by threshold selection)
+- Tune-set calibration metrics (ECE, Brier score)
+
+Note: these calibration metrics are measured on the TUNE set — the same
+partition used for threshold selection.  For held-out calibration quality
+assessment on the independent CALIBRATION partition, see
+``evaluate_calibration_baseline.py``.
+"""
+
 import json
 
 import joblib
 import numpy as np
 import pandas as pd
 
-from src.data import load_data, split_data
+from src.data import load_data, load_splits
 from src.evaluate import calculate_calibration_metrics
 from src.paths import METRICS_DIR, ROOT_DIR
 
@@ -17,16 +29,17 @@ def main() -> None:
 
     model = joblib.load(MODEL_PATH)
     df = load_data()
-    _, val_df, _ = split_data(df, random_state=42)
+    splits = load_splits(df)
+    tune_df = splits.tune
 
-    probabilities = model.predict_proba(val_df["Document"])
-    predictions = model.predict(val_df["Document"])
+    probabilities = model.predict_proba(tune_df["Document"])
+    predictions = model.predict(tune_df["Document"])
     confidence = np.max(probabilities, axis=1)
 
     results = pd.DataFrame(
         {
-            "ticket_id": val_df.index.to_numpy(),
-            "true_label": val_df["Topic_group"].values,
+            "ticket_id": tune_df.index.to_numpy(),
+            "true_label": tune_df["Topic_group"].values,
             "predicted_label": predictions,
             "confidence": confidence,
         }
@@ -42,15 +55,15 @@ def main() -> None:
         results["confidence"],
     )
 
-    calibration_path = METRICS_DIR / "baseline_calibration_metrics.json"
+    calibration_path = METRICS_DIR / "baseline_tune_calibration_metrics.json"
     with open(calibration_path, "w", encoding="utf-8") as f:
         json.dump(calibration, f, indent=4)
 
-    print("Validation accuracy:", results["correct"].mean())
+    print("Tune accuracy:", results["correct"].mean())
     print("Top label Brier score:", calibration["top_label_brier_score"])
     print("ECE:", calibration["expected_calibration_error"])
-    print("Saved to:", output_path)
-    print("Saved calibration metrics to:", calibration_path)
+    print("Saved predictions to:", output_path)
+    print("Saved tune calibration metrics to:", calibration_path)
 
 
 if __name__ == "__main__":

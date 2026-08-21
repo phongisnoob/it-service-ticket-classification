@@ -11,7 +11,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 
-from src.data import load_data, split_data
+from src.data import load_data, load_splits
 from src.evaluate import calculate_metrics
 from src.hashing import calculate_file_sha256
 from src.paths import ARTIFACT_DIR, DATA_PATH, METRICS_DIR, ROOT_DIR
@@ -20,12 +20,14 @@ from src.tracking import log_artifact, log_dict_as_artifact, log_metrics, log_pa
 
 def train_baseline() -> tuple[CalibratedClassifierCV, dict[str, float]]:
     df = load_data()
-    train_df, val_df, _ = split_data(df)
+    splits = load_splits(df)
+    train_df = splits.train
+    tune_df = splits.tune
 
     X_train = train_df["Document"]
     y_train = train_df["Topic_group"]
-    X_val = val_df["Document"]
-    y_val = val_df["Topic_group"]
+    X_tune = tune_df["Document"]
+    y_tune = tune_df["Topic_group"]
 
     with open(ROOT_DIR / "params.yaml", "r") as f:
         params = yaml.safe_load(f)["baseline"]
@@ -55,10 +57,10 @@ def train_baseline() -> tuple[CalibratedClassifierCV, dict[str, float]]:
     )
     calibrated_model.fit(X_train, y_train)
 
-    val_predictions = calibrated_model.predict(X_val)
-    val_metrics = calculate_metrics(y_val, val_predictions)
+    tune_predictions = calibrated_model.predict(X_tune)
+    val_metrics = calculate_metrics(y_tune, tune_predictions)
 
-    print("\nValidation metrics")
+    print("\nTune metrics")
     for key, value in val_metrics.items():
         print(f"  {key}: {value:.4f}")
 

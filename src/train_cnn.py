@@ -13,7 +13,7 @@ from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import DataLoader
 
 from src.cnn_data import TicketDataset, build_vocab
-from src.data import load_data, split_data
+from src.data import load_data, load_splits
 from src.hashing import calculate_file_sha256
 from src.paths import ARTIFACT_DIR, DATA_PATH, ROOT_DIR
 from src.textcnn import TextCNN
@@ -70,7 +70,7 @@ def train_one_epoch(
     return total_loss / dataset_size
 
 
-def evaluate_on_val(
+def evaluate_on_tune(
     model: TextCNN,
     loader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
     criterion: nn.CrossEntropyLoss,
@@ -100,12 +100,14 @@ def train_cnn() -> None:
     print("Using device:", device)
 
     df = load_data()
-    train_df, val_df, _ = split_data(df, random_state=SEED)
-    print(f"Train: {len(train_df)}  Validation: {len(val_df)}")
+    splits = load_splits(df)
+    train_df = splits.train
+    tune_df = splits.tune
+    print(f"Train: {len(train_df)}  Tune: {len(tune_df)}")
 
     label_encoder = LabelEncoder()
     y_train: np.ndarray = label_encoder.fit_transform(train_df["Topic_group"])
-    y_val: np.ndarray = label_encoder.transform(val_df["Topic_group"])
+    y_tune: np.ndarray = label_encoder.transform(tune_df["Topic_group"])
     num_classes = len(label_encoder.classes_)
     print("Classes:", label_encoder.classes_)
 
@@ -129,9 +131,9 @@ def train_cnn() -> None:
         vocab=vocab,
         max_length=max_length,
     )
-    val_dataset = TicketDataset(
-        texts=val_df["Document"].tolist(),
-        labels=y_val.tolist(),
+    tune_dataset = TicketDataset(
+        texts=tune_df["Document"].tolist(),
+        labels=y_tune.tolist(),
         vocab=vocab,
         max_length=max_length,
     )
@@ -139,7 +141,7 @@ def train_cnn() -> None:
     g = torch.Generator()
     g.manual_seed(SEED)
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, generator=g)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    tune_loader = DataLoader(tune_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
     model = TextCNN(
         vocab_size=len(vocab),
@@ -189,7 +191,9 @@ def train_cnn() -> None:
         train_loss = train_one_epoch(
             model, train_loader, criterion, optimizer, device, len(train_dataset)
         )
-        val_loss, val_f1 = evaluate_on_val(model, val_loader, criterion, device, len(val_dataset))
+        val_loss, val_f1 = evaluate_on_tune(
+            model, tune_loader, criterion, device, len(tune_dataset)
+        )
         print(
             f"Epoch {epoch:02d} | Train Loss: {train_loss:.4f} | "
             f"Val Loss: {val_loss:.4f} | Val Macro-F1: {val_f1:.4f}"

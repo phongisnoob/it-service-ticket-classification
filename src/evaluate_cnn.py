@@ -11,7 +11,7 @@ from sklearn.metrics import (
 from torch.utils.data import DataLoader
 
 from src.cnn_data import TicketDataset
-from src.data import load_data, split_data
+from src.data import load_data, load_splits
 from src.evaluate import calculate_calibration_metrics, calculate_metrics
 from src.paths import FIGURE_DIR, METRICS_DIR, ROOT_DIR
 from src.textcnn import TextCNN
@@ -33,7 +33,7 @@ def main() -> None:
     label_to_id = {label: index for index, label in enumerate(labels)}
 
     df = load_data()
-    _, _, test_df = split_data(df, random_state=42)
+    test_df = load_splits(df).test
 
     y_test = [label_to_id[label] for label in test_df["Topic_group"]]
 
