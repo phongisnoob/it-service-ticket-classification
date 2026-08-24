@@ -80,6 +80,7 @@
     els.body.hidden = false;
 
     var confidence = Number(data.confidence);
+    var threshold = Number(data.threshold);
 
     els.category.textContent = data.category;
 
@@ -158,10 +159,18 @@
     var key = els.keyInput.value.trim();
     if (key) headers["X-API-Key"] = key;
 
+    var requestTimedOut = false;
+    var controller = new AbortController();
+    var timer = setTimeout(function () {
+      requestTimedOut = true;
+      controller.abort();
+    }, 30000);
+
     fetch("/predict", {
       method: "POST",
       headers: headers,
-      body: JSON.stringify({ text: els.text.value })
+      body: JSON.stringify({ text: els.text.value }),
+      signal: controller.signal
     })
       .then(function (response) {
         return response
@@ -173,6 +182,7 @@
           });
       })
       .then(function (result) {
+        clearTimeout(timer);
         if (result.ok) {
           renderPrediction(result.payload);
         } else if (result.status === 401) {
@@ -186,17 +196,44 @@
           var detail = result.payload
             ? extractErrorDetail(result.status, result.payload)
             : extractErrorDetail(result.status, null, result.statusText);
-          showError("Request rejected (" + result.status + ")", detail);
+          var titles = {
+            403: "Request is not authorized.",
+            404: "Prediction endpoint was not found.",
+            422: "Invalid ticket request.",
+            429: "Too many prediction requests. Please try again.",
+            500: "The model server returned an internal error.",
+            502: "The model service is temporarily unavailable.",
+            503: "The model service is temporarily unavailable.",
+            504: "The model service is temporarily unavailable."
+          };
+          showError(
+            titles[result.status] || ("Request failed (" + result.status + ")"),
+            detail
+          );
         }
       })
-      .catch(function () {
-        showError(
-          "Cannot reach the model server",
-          "The /predict request failed before a response arrived. Check that " +
-            "the service is running and try again."
-        );
+      .catch(function (reason) {
+        // Keep the underlying cause visible for debugging instead of masking it.
+        if (window.console && console.error) {
+          console.error("[predict] request failed:", reason);
+        }
+        try { window.__lastPredictError = String(reason && reason.stack || reason); } catch (e) {}
+        if (requestTimedOut) {
+          showError(
+            "The prediction request timed out.",
+            "The server did not respond in time. Try again in a moment."
+          );
+        } else if (reason instanceof TypeError) {
+          showError(
+            "Could not connect to the model service.",
+            "The browser could not complete the request (network failure or blocked request)."
+          );
+        } else {
+          showError("Prediction failed unexpectedly.", String(reason));
+        }
       })
       .finally(function () {
+        clearTimeout(timer);
         setBusy(false);
         setInputState();
       });
