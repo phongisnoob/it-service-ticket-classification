@@ -184,17 +184,27 @@ jobs:
             -e MODEL_BACKEND=baseline \
             -e APP_ENV=production \
             -e API_KEY=test_key \
+            -e DAGSHUB_TOKEN="$DAGSHUB_TOKEN" \
             -p 8001:8000 \
             it-ticket-classifier:baseline
 
-          # Wait for readiness
+          # Wait for readiness (entrypoint runs dvc pull first)
+          ready=0
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:8001/health; then
+            if curl -sf http://localhost:8001/health > /dev/null; then
               echo "Baseline ready after ${i}s"
+              ready=1
               break
             fi
             sleep 1
           done
+
+          if [ "$ready" -ne 1 ]; then
+            echo "::error::Baseline container never became healthy after ${i}s"
+            docker logs baseline-test
+            docker rm -f baseline-test || true
+            exit 1
+          fi
 
           # /health check
           curl -sf http://localhost:8001/health | python -c "
@@ -230,16 +240,27 @@ jobs:
             -e MODEL_BACKEND=cnn \
             -e APP_ENV=production \
             -e API_KEY=test_key \
+            -e DAGSHUB_TOKEN="$DAGSHUB_TOKEN" \
             -p 8002:8000 \
             it-ticket-classifier:cnn
 
+          # Wait for readiness (entrypoint runs dvc pull first)
+          ready=0
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:8002/health; then
+            if curl -sf http://localhost:8002/health > /dev/null; then
               echo "CNN ready after ${i}s"
+              ready=1
               break
             fi
             sleep 1
           done
+
+          if [ "$ready" -ne 1 ]; then
+            echo "::error::CNN container never became healthy after ${i}s"
+            docker logs cnn-test
+            docker rm -f cnn-test || true
+            exit 1
+          fi
 
           curl -sf http://localhost:8002/health | python -c "
           import json, sys
