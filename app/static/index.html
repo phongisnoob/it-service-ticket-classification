@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IT Service Ticket Classifier</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='2' fill='%231f5f7a'/%3E%3Cpath d='M4 8h8M8 4v8' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main class="shell">
+
+  <header class="masthead">
+    <h1>IT Service Ticket Classifier</h1>
+    <p class="masthead-sub">Route inbound tickets automatically when the model is confident enough; everything else goes to manual review.</p>
+    <p id="model-meta" class="model-meta" data-state="loading">Checking model server&hellip;</p>
+  </header>
+
+  <details class="conn-settings" id="conn-settings" hidden>
+    <summary>API key</summary>
+    <div class="conn-body">
+      <label for="api-key">This server requires an API key. It is kept in this browser tab only.</label>
+      <input type="password" id="api-key" autocomplete="off" spellcheck="false" placeholder="X-API-Key value">
+    </div>
+  </details>
+
+  <section class="panel" aria-labelledby="input-heading">
+    <form id="classify-form" novalidate>
+      <div class="field-head">
+        <label for="ticket-text" id="input-heading">Ticket text</label>
+        <span id="char-count" class="char-count">0 characters</span>
+      </div>
+      <textarea id="ticket-text" rows="7" placeholder="Paste the ticket here &mdash; e.g. &quot;Since this morning I cannot open the shared finance drive. Other colleagues can access it fine.&quot;" autofocus></textarea>
+
+      <div class="form-foot">
+        <p id="input-hint" class="input-hint" role="status"></p>
+        <button type="submit" id="submit-btn" disabled>Classify ticket</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel result-panel" id="result-panel" aria-labelledby="result-heading" aria-live="polite">
+    <h2 id="result-heading">Result</h2>
+
+    <div id="result-empty" class="result-empty">
+      <p>No ticket classified yet.</p>
+      <p>Paste a ticket above and press <strong>Classify ticket</strong>. High-confidence tickets are routed automatically; low-confidence ones are flagged for a person.</p>
+    </div>
+
+    <div id="result-error" class="result-error" hidden>
+      <p class="error-title" id="error-title">Request failed</p>
+      <p class="error-detail" id="error-detail"></p>
+    </div>
+
+    <div id="result-body" class="result-body" hidden>
+      <div class="category-row">
+        <span class="data-label">Predicted category</span>
+        <span class="category-value" id="r-category">&ndash;</span>
+      </div>
+
+      <div class="verdict" id="r-verdict">
+        <span class="verdict-badge" id="r-verdict-label">-</span>
+        <span class="verdict-meter" aria-hidden="true">
+          <span class="meter-track"><span class="meter-threshold" id="r-threshold-mark"></span><span class="meter-fill" id="r-conf-fill"></span></span>
+          <span class="meter-scale" aria-hidden="true"><span>0</span><span>1</span></span>
+        </span>
+        <span class="verdict-nums" id="r-verdict-nums">conf - &middot; thr -</span>
+      </div>
+
+      <div class="top-preds">
+        <span class="data-label">Top predictions</span>
+        <ol id="r-top3" class="pred-list"></ol>
+      </div>
+    </div>
+  </section>
+
+  <footer class="page-foot">
+    <p>Thresholds are selected offline from held-out validation data (Clopper&ndash;Pearson lower bound &ge; 90% auto-route accuracy). This page only displays model output &mdash; routing decisions come from the API.</p>
+  </footer>
+
+</main>
+<script src="/static/app.js"></script>
+</body>
+</html>

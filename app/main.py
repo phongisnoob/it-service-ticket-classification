@@ -3,9 +3,12 @@ import secrets
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from prometheus_client import Counter, Histogram, make_asgi_app
 from pydantic import BaseModel, Field, field_validator
 from starlette.routing import Match
@@ -14,6 +17,9 @@ from src.inference import PredictionResult, get_predictor
 
 APP_ENV = os.getenv("APP_ENV", "development").lower()
 MODEL_BACKEND = os.getenv("MODEL_BACKEND", "auto")
+
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+
 
 # Fixed label for unmatched routes so arbitrary URLs cannot create unbounded cardinality.
 _UNMATCHED_ROUTE = "UNMATCHED"
@@ -128,9 +134,14 @@ def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
 
 
-@app.get("/")
-def root() -> dict[str, str]:
-    return {"message": "IT Service Ticket Classifier"}
+@app.get("/", include_in_schema=False)
+def root() -> FileResponse:
+    """Serve the ticket classification UI."""
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 
 
 @app.get("/health")
