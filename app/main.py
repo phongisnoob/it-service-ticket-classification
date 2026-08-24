@@ -1,3 +1,4 @@
+import json
 import os
 import secrets
 import time
@@ -14,6 +15,7 @@ from pydantic import BaseModel, Field, field_validator
 from starlette.routing import Match
 
 from src.inference import PredictionResult, get_predictor
+from src.paths import METRICS_DIR
 
 APP_ENV = os.getenv("APP_ENV", "development").lower()
 MODEL_BACKEND = os.getenv("MODEL_BACKEND", "auto")
@@ -153,6 +155,23 @@ def health() -> dict[str, object]:
         "model_sha256": getattr(predictor, "model_sha256", None),
         "threshold": getattr(predictor, "threshold", None),
     }
+
+
+@app.get("/model-info", include_in_schema=False)
+def model_info() -> dict[str, object]:
+    """Serve persisted evaluation metrics for the UI's model panel (read-only)."""
+    metric_files = {
+        "routing": METRICS_DIR / "baseline_routing_metrics.json",
+        "classification": METRICS_DIR / "baseline_metrics.json",
+        "calibration": METRICS_DIR / "baseline_tune_calibration_metrics.json",
+    }
+    info: dict[str, object] = {}
+    for key, path in metric_files.items():
+        if path.exists():
+            with open(path, encoding="utf-8") as f:
+                info[key] = json.load(f)
+    info["available"] = bool(info)
+    return info
 
 
 @app.post("/predict", response_model=PredictionResponse)

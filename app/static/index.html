@@ -3,82 +3,164 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#ffffff">
 <title>IT Service Ticket Classifier</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='2' fill='%231f5f7a'/%3E%3Cpath d='M4 8h8M8 4v8' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='2' fill='%2317546e'/%3E%3Cpath d='M4 8h8M8 4v8' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<main class="shell">
 
-  <header class="masthead">
-    <h1>IT Service Ticket Classifier</h1>
-    <p class="masthead-sub">Route inbound tickets automatically when the model is confident enough; everything else goes to manual review.</p>
-    <p id="model-meta" class="model-meta" data-state="loading">Checking model server&hellip;</p>
-  </header>
+<a class="skip-link" href="#ticket-text">Skip to ticket input</a>
 
-  <details class="conn-settings" id="conn-settings" hidden>
-    <summary>API key</summary>
-    <div class="conn-body">
-      <label for="api-key">This server requires an API key. It is kept in this browser tab only.</label>
-      <input type="password" id="api-key" autocomplete="off" spellcheck="false" placeholder="X-API-Key value">
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <h1 class="brand-name">IT Service Ticket Classifier</h1>
     </div>
-  </details>
+    <span class="status-pill" id="status-pill" data-state="loading">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span id="status-text">checking model</span>
+    </span>
+  </div>
+</header>
 
-  <section class="panel" aria-labelledby="input-heading">
-    <form id="classify-form" novalidate>
-      <div class="field-head">
-        <label for="ticket-text" id="input-heading">Ticket text</label>
-        <span id="char-count" class="char-count">0 characters</span>
-      </div>
-      <textarea id="ticket-text" rows="7" placeholder="Paste the ticket here &mdash; e.g. &quot;Since this morning I cannot open the shared finance drive. Other colleagues can access it fine.&quot;" autofocus></textarea>
+<main class="layout">
 
-      <div class="form-foot">
-        <p id="input-hint" class="input-hint" role="status"></p>
-        <button type="submit" id="submit-btn" disabled>Classify ticket</button>
+  <section class="workflow">
+
+    <section class="panel input-panel" aria-labelledby="input-heading">
+      <form id="classify-form" novalidate>
+        <div class="field-head">
+          <label for="ticket-text" id="input-heading">Ticket text</label>
+          <span id="char-count" class="char-count">0 / 5000</span>
+        </div>
+        <textarea id="ticket-text" rows="7"
+          placeholder="Paste a ticket &mdash; e.g. &quot;Since this morning I can&rsquo;t open the shared finance drive; colleagues can access it fine.&quot;&hellip;"></textarea>
+
+        <details class="conn-settings" id="conn-settings" hidden>
+          <summary>API key</summary>
+          <label for="api-key">This server requires an API key. It stays in this browser tab only.</label>
+          <input type="password" id="api-key" autocomplete="off" spellcheck="false" placeholder="X-API-Key value">
+        </details>
+
+        <div class="form-foot">
+          <p id="input-hint" class="input-hint" role="status"></p>
+          <button type="submit" id="submit-btn" disabled>Classify ticket</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel result-panel" id="result-panel" aria-labelledby="result-heading" aria-live="polite">
+      <h2 id="result-heading">Routing decision</h2>
+
+      <div id="result-empty" class="result-empty">
+        <p>No ticket classified yet.</p>
+        <p>Paste a ticket above. Tickets with model confidence at or above the routing threshold are routed automatically; the rest go to a person.</p>
       </div>
-    </form>
+
+      <div id="result-error" class="result-error" hidden>
+        <p class="error-title" id="error-title">Request failed</p>
+        <p class="error-detail" id="error-detail"></p>
+      </div>
+
+      <div id="result-body" class="result-body" hidden>
+        <div class="category-block">
+          <span class="data-label">Predicted category</span>
+          <span class="category-value" id="r-category">&ndash;</span>
+        </div>
+
+        <div class="verdict" id="r-verdict" data-verdict="auto">
+          <div class="verdict-head">
+            <span class="verdict-badge" id="r-verdict-label">&ndash;</span>
+            <span class="verdict-nums" id="r-verdict-nums">&ndash;</span>
+          </div>
+          <div class="meter" aria-hidden="true">
+            <div class="meter-track">
+              <div class="meter-fill" id="r-conf-fill"></div>
+              <div class="meter-tick" id="r-threshold-mark"><span class="meter-tick-label" id="r-threshold-label"></span></div>
+            </div>
+            <div class="meter-scale"><span>0%</span><span>100% confidence</span></div>
+          </div>
+        </div>
+
+        <p class="next-step" id="r-next"></p>
+
+        <div class="top-preds">
+          <span class="data-label">Alternative predictions</span>
+          <ol id="r-top3" class="pred-list"></ol>
+        </div>
+      </div>
+    </section>
+
   </section>
 
-  <section class="panel result-panel" id="result-panel" aria-labelledby="result-heading" aria-live="polite">
-    <h2 id="result-heading">Result</h2>
+  <aside class="rail">
 
-    <div id="result-empty" class="result-empty">
-      <p>No ticket classified yet.</p>
-      <p>Paste a ticket above and press <strong>Classify ticket</strong>. High-confidence tickets are routed automatically; low-confidence ones are flagged for a person.</p>
-    </div>
+    <section class="panel rail-panel" aria-labelledby="model-status-h">
+      <h2 class="rail-heading" id="model-status-h">Model status</h2>
+      <dl class="kv">
+        <div><dt>Backend</dt><dd id="m-backend">&ndash;</dd></div>
+        <div><dt>Route threshold</dt><dd class="mono" id="m-threshold">&ndash;</dd></div>
+        <div><dt>Model sha256</dt><dd class="mono" id="m-sha">&ndash;</dd></div>
+      </dl>
+    </section>
 
-    <div id="result-error" class="result-error" hidden>
-      <p class="error-title" id="error-title">Request failed</p>
-      <p class="error-detail" id="error-detail"></p>
-    </div>
+    <section class="panel rail-panel" aria-labelledby="perf-h" id="perf-panel" hidden>
+      <h2 class="rail-heading" id="perf-h">Routing performance</h2>
+      <p class="rail-note" id="perf-note"></p>
+      <dl class="metrics">
+        <div class="metric primary">
+          <dt>Auto-route coverage</dt>
+          <dd id="k-coverage">&ndash;</dd>
+        </div>
+        <div class="metric primary">
+          <dt>Accuracy when auto-routed</dt>
+          <dd id="k-acc">&ndash;</dd>
+        </div>
+        <div class="metric">
+          <dt>Sent to manual review</dt>
+          <dd id="k-review">&ndash;</dd>
+        </div>
+        <div class="metric">
+          <dt>Overall accuracy</dt>
+          <dd id="k-overall">&ndash;</dd>
+        </div>
+        <div class="metric">
+          <dt>Macro F1</dt>
+          <dd id="k-f1">&ndash;</dd>
+        </div>
+      </dl>
+      <details class="tech-details">
+        <summary>Calibration</summary>
+        <dl class="kv small">
+          <div><dt>Expected calibration error</dt><dd class="mono" id="k-ece">&ndash;</dd></div>
+          <div><dt>Brier score (top label)</dt><dd class="mono" id="k-brier">&ndash;</dd></div>
+        </dl>
+      </details>
+    </section>
 
-    <div id="result-body" class="result-body" hidden>
-      <div class="category-row">
-        <span class="data-label">Predicted category</span>
-        <span class="category-value" id="r-category">&ndash;</span>
-      </div>
+    <section class="panel rail-panel">
+      <h2 class="rail-heading">How classification works</h2>
+      <ol class="pipeline" aria-label="Classification pipeline">
+        <li>Ticket text</li>
+        <li>TF-IDF features</li>
+        <li>Logistic regression</li>
+        <li>Class probabilities</li>
+        <li>Threshold gate</li>
+        <li>Auto-route or review</li>
+      </ol>
+      <p class="rail-note">The threshold is chosen offline so that auto-routed accuracy holds at 90% or better with statistical confidence &mdash; low-confidence tickets always reach a person.</p>
+    </section>
 
-      <div class="verdict" id="r-verdict">
-        <span class="verdict-badge" id="r-verdict-label">-</span>
-        <span class="verdict-meter" aria-hidden="true">
-          <span class="meter-track"><span class="meter-threshold" id="r-threshold-mark"></span><span class="meter-fill" id="r-conf-fill"></span></span>
-          <span class="meter-scale" aria-hidden="true"><span>0</span><span>1</span></span>
-        </span>
-        <span class="verdict-nums" id="r-verdict-nums">conf - &middot; thr -</span>
-      </div>
-
-      <div class="top-preds">
-        <span class="data-label">Top predictions</span>
-        <ol id="r-top3" class="pred-list"></ol>
-      </div>
-    </div>
-  </section>
-
-  <footer class="page-foot">
-    <p>Thresholds are selected offline from held-out validation data (Clopper&ndash;Pearson lower bound &ge; 90% auto-route accuracy). This page only displays model output &mdash; routing decisions come from the API.</p>
-  </footer>
+  </aside>
 
 </main>
+
+<footer class="page-foot">
+  <p>Evaluation figures come from the held-out test set of the bundled dataset and describe the deployed baseline model.</p>
+</footer>
+
 <script src="/static/app.js"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 /* IT Service Ticket Classifier UI.
-   Talks to the real FastAPI backend. All routing decisions come from the
-   API's needs_manual_review field — this script only renders responses. */
+   Renders responses from the real FastAPI backend only — all routing
+   decisions come from the API's needs_manual_review field. */
 (function () {
   "use strict";
 
@@ -13,7 +13,8 @@
     hint: document.getElementById("input-hint"),
     count: document.getElementById("char-count"),
     btn: document.getElementById("submit-btn"),
-    meta: document.getElementById("model-meta"),
+    pill: document.getElementById("status-pill"),
+    pillText: document.getElementById("status-text"),
     conn: document.getElementById("conn-settings"),
     keyInput: document.getElementById("api-key"),
     panel: document.getElementById("result-panel"),
@@ -28,7 +29,12 @@
     verdictNums: document.getElementById("r-verdict-nums"),
     confFill: document.getElementById("r-conf-fill"),
     thrMark: document.getElementById("r-threshold-mark"),
-    top3: document.getElementById("r-top3")
+    thrLabel: document.getElementById("r-threshold-label"),
+    nextStep: document.getElementById("r-next"),
+    top3: document.getElementById("r-top3"),
+    mBackend: document.getElementById("m-backend"),
+    mThreshold: document.getElementById("m-threshold"),
+    mSha: document.getElementById("m-sha")
   };
 
   function nonWsLength(s) {
@@ -40,7 +46,7 @@
     var len = value.length;
     var valid = nonWsLength(value) >= MIN_NON_WS && len <= MAX_LEN;
 
-    els.count.textContent = len + " / " + MAX_LEN + " chars";
+    els.count.textContent = len + " / " + MAX_LEN;
     els.count.setAttribute("data-over", String(len > MAX_LEN));
     els.btn.disabled = !valid || els.btn.getAttribute("data-busy") === "1";
 
@@ -73,21 +79,30 @@
     els.error.hidden = true;
     els.body.hidden = false;
 
+    var confidence = Number(data.confidence);
+
     els.category.textContent = data.category;
 
     var auto = data.needs_manual_review === false;
     els.verdict.setAttribute("data-verdict", auto ? "auto" : "manual");
     els.verdictLabel.textContent = auto
-      ? "\u25CF AUTO-ROUTE"
+      ? "\u25CF AUTO-ROUTED"
       : "\u25CF MANUAL REVIEW";
     els.verdictNums.textContent =
-      "confidence " + Number(data.confidence).toFixed(3) +
-      " \u00B7 threshold " + Number(data.threshold).toFixed(2);
+      "confidence " + (confidence * 100).toFixed(1) + "%" +
+      " \u00B7 threshold " + (threshold * 100).toFixed(0) + "%";
 
-    var confPct = Math.max(0, Math.min(1, data.confidence)) * 100;
-    var thrPct = Math.max(0, Math.min(1, data.threshold)) * 100;
+    var confPct = Math.max(0, Math.min(1, confidence)) * 100;
+    var thrPct = Math.max(0, Math.min(1, threshold)) * 100;
     els.confFill.style.width = confPct + "%";
-    els.thrMark.style.left = "calc(" + thrPct + "% - 1px)";
+    els.thrMark.style.left =
+      "clamp(30px, " + thrPct + "%, calc(100% - 34px))";
+    els.thrLabel.textContent = "threshold " + (threshold * 100).toFixed(0) + "%";
+
+    els.nextStep.textContent = auto
+      ? "Routed automatically to " + data.category.toLowerCase() +
+        " \u2014 no action needed."
+      : "Confidence is below the routing threshold \u2014 send this ticket to the triage queue.";
 
     els.top3.innerHTML = "";
     (data.top_3 || []).forEach(function (item, i) {
@@ -109,7 +124,7 @@
 
       var prob = document.createElement("span");
       prob.className = "pred-prob";
-      prob.textContent = item.probability.toFixed(3);
+      prob.textContent = (item.probability * 100).toFixed(1) + "%";
 
       li.appendChild(name);
       li.appendChild(bar);
@@ -125,12 +140,13 @@
     els.panel.setAttribute("aria-busy", String(busy));
   }
 
-  function extractErrorDetail(status, payload) {
+  function extractErrorDetail(status, payload, statusText) {
     if (payload && payload.detail) {
       if (typeof payload.detail === "string") return payload.detail;
       try { return JSON.stringify(payload.detail); } catch (e) { /* fall through */ }
     }
-    return "HTTP " + status;
+    return "HTTP " + status + " " + (statusText || "") +
+      " \u2014 response was not JSON (proxy or gateway error?)";
   }
 
   els.form.addEventListener("submit", function (event) {
@@ -169,8 +185,7 @@
         } else {
           var detail = result.payload
             ? extractErrorDetail(result.status, result.payload)
-            : "HTTP " + result.status + " " + (result.statusText || "no body") +
-              " \u2014 response was not JSON (proxy or gateway error?)";
+            : extractErrorDetail(result.status, null, result.statusText);
           showError("Request rejected (" + result.status + ")", detail);
         }
       })
@@ -189,6 +204,11 @@
 
   els.text.addEventListener("input", setInputState);
 
+  // Focus the primary input on pointer devices only (avoids mobile keyboard pop-up).
+  if (window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
+    els.text.focus();
+  }
+
   // Remember the key for this tab session only.
   try {
     var saved = sessionStorage.getItem("api_key");
@@ -198,22 +218,61 @@
     });
   } catch (e) { /* storage unavailable — the key just won't persist */ }
 
-  // Load real model metadata from /health for the masthead readout.
+  // Model status: /health feeds the top-bar pill and the rail card.
   fetch("/health")
     .then(function (r) { return r.json(); })
     .then(function (h) {
       if (h.status !== "ok") throw new Error("status=" + h.status);
       var sha = h.model_sha256 ? String(h.model_sha256).slice(0, 12) : "unknown";
-      els.meta.textContent =
-        "backend " + h.model_backend +
-        " \u00B7 model sha256 " + sha +
-        " \u00B7 route threshold " + Number(h.threshold).toFixed(2);
-      els.meta.setAttribute("data-state", "ok");
+      els.pill.setAttribute("data-state", "ok");
+      els.pillText.textContent = h.model_backend + " \u00B7 sha " + sha;
+      els.mBackend.textContent = h.model_backend;
+      if (h.threshold !== null && h.threshold !== undefined) {
+        els.mThreshold.textContent = Number(h.threshold).toFixed(2);
+      }
+      els.mSha.textContent = sha;
     })
     .catch(function () {
-      els.meta.textContent = "Model server unreachable \u2014 classification unavailable.";
-      els.meta.setAttribute("data-state", "error");
+      els.pill.setAttribute("data-state", "error");
+      els.pillText.textContent = "model unreachable";
     });
+
+  // Routing performance: persisted evaluation metrics served by /model-info.
+  fetch("/model-info")
+    .then(function (r) { return r.json(); })
+    .then(function (info) {
+      if (!info || !info.available || !info.routing) return;
+      var routing = info.routing;
+      var cls = info.classification || {};
+      var cal = info.calibration || {};
+
+      function pct(x) { return (x * 100).toFixed(2) + "%"; }
+
+      document.getElementById("k-coverage").textContent = pct(routing.coverage);
+      document.getElementById("k-acc").textContent = pct(routing.auto_routed_accuracy);
+      document.getElementById("k-review").textContent = pct(routing.manual_review_rate);
+      document.getElementById("k-overall").textContent =
+        pct(cls.accuracy !== undefined ? cls.accuracy : routing.overall_test_accuracy);
+      document.getElementById("k-f1").textContent =
+        cls.macro_f1 !== undefined ? pct(cls.macro_f1) : "\u2013";
+
+      if (routing.total_tickets) {
+        document.getElementById("perf-note").textContent =
+          "Held-out test set, " + routing.total_tickets.toLocaleString() +
+          " tickets (" + Number(routing.auto_routed_tickets).toLocaleString() +
+          " auto-routed).";
+      }
+
+      if (cal.expected_calibration_error !== undefined) {
+        document.getElementById("k-ece").textContent =
+          cal.expected_calibration_error.toFixed(3);
+        document.getElementById("k-brier").textContent =
+          cal.top_label_brier_score.toFixed(3);
+      }
+
+      document.getElementById("perf-panel").hidden = false;
+    })
+    .catch(function () { /* metrics panel simply stays hidden */ });
 
   setInputState();
 })();
