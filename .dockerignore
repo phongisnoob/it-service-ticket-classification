@@ -21,10 +21,12 @@ reports/metrics/*
 reports/data/*
 !reports/data/data_manifest.json
 mlruns/
-.dvc/
-.dvcignore
-dvc.yaml
-dvc.lock
+# DVC runtime pull support: the image needs the remote config, stage files and
+# lock file for `dvc pull` at container startup. Exclude only the heavy/secret
+# parts (local cache, tmp state, local credentials).
+.dvc/cache/
+.dvc/tmp/
+.dvc/config.local
 params.yaml
 GEMINI.md
 README.md
