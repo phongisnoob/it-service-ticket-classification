@@ -53,6 +53,7 @@ mlruns.db
 
 # Temporary / local developer files
 *.bak
+*.log
 *.sqlite3
 .env
 
