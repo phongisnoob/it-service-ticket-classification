@@ -1,443 +1,345 @@
-
 # IT Service Ticket Classification & Confidence-Based Routing
 
-An NLP project that sorts IT service desk tickets into eight support categories. Instead of forcing a prediction on every ticket, the system flags ambiguous cases for manual review based on model confidence.
+[![CI](https://github.com/phongisnoob/it-service-ticket-classification/actions/workflows/ci.yml/badge.svg)](https://github.com/phongisnoob/it-service-ticket-classification/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.12-blue)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-I started this project to compare a classical TF-IDF + Logistic Regression baseline against a PyTorch TextCNN. The Logistic Regression model ended up performing slightly better on the test set, so that's what runs in the FastAPI backend by default.
+An end-to-end ML system that classifies IT service tickets into eight support
+categories and routes them automatically **only when the model is confident
+enough**. Low-confidence tickets are escalated to human review instead of being
+routed on a guess.
 
-## Overview
+**Live demo:** [it-service-ticket-classification.onrender.com](https://it-service-ticket-classification.onrender.com)
+· [API docs](https://it-service-ticket-classification.onrender.com/docs)
+(`POST /predict` requires an `X-API-Key`; see [API example](#api-example).)
 
-Most classification tutorials just try to maximize accuracy. In a real helpdesk, you can't afford to auto-route ambiguous tickets. This project focuses on the practical trade-off between coverage (how many tickets we automate) and accuracy (how often the automated routing is correct).
+## Why confidence-aware routing?
 
-Key details:
-- Trained on a public dataset of **47,837 tickets**, stratified into a 70/10/10/10 split (train/tune/calibration/test).
-- The routing threshold is tuned strictly on the validation set, keeping the test set isolated.
-- The API returns the top 3 categories, the confidence score, and a boolean flag indicating if the ticket needs manual review.
+A classifier can be accurate overall and still be unsafe to automate on
+ambiguous tickets. Overall accuracy says nothing about *which individual
+predictions* deserve trust.
 
-## Results
+This project therefore treats routing as a decision problem with two competing
+quantities:
 
-### Classification
+- **Coverage** — the share of tickets routed without a human.
+- **Auto-routed accuracy** — how often those automatic decisions are correct.
+
+A confidence threshold separates the two regimes:
+
+```text
+ticket → classifier → confidence → threshold gate
+                                     ├─ confidence ≥ threshold → auto-route
+                                     └─ confidence < threshold → manual review
+```
+
+The threshold is not hand-picked. It is selected statistically so that
+auto-routed accuracy holds at 90% or better with a chosen confidence level,
+and coverage is maximized subject to that constraint (see
+[Threshold selection](#threshold-selection)).
+
+## Model performance
+
+Held-out test set, 4,787 tickets (values from `reports/metrics/`):
 
 | Model | Accuracy | Macro F1 | Weighted F1 |
-|---|---:|---:|---:|
-| **TF-IDF + Logistic Regression** | **85.31%** | **85.28%** | **85.34%** |
-| TextCNN | 84.88% | 85.01% | 84.94% |
+|---|---|---|---|
+| **TF-IDF + Logistic Regression** (production) | **85.75%** | **85.73%** | **85.78%** |
+| TextCNN (experimental) | 84.17% | 84.30% | 84.20% |
 
-![Model performance comparison](reports/figures/model_comparison.png)
+The classical baseline won on validation coverage and is the model deployed by
+`model_selection.json`. The TextCNN is kept as a comparable experimental
+candidate.
 
-I picked Logistic Regression for the final pipeline because it yielded the best routing coverage on the validation set (while holding auto-routed accuracy above 90%). 
+## Calibration
 
-The production baseline uses sigmoid probability calibration through `CalibratedClassifierCV` with 5-fold cross-validation on the training set. On the validation set, it achieved an Expected Calibration Error (ECE) of 0.0866 and a top-label Brier score of 0.1037.
+Predicted probabilities are only useful for routing if they are *calibrated* —
+a "70% confidence" prediction should be right about 70% of the time. Two
+separate mechanisms are used, deliberately:
 
-### Confidence-based routing
+1. **Training-time calibration** — the baseline wraps
+   `TF-IDF + LogisticRegression` in `CalibratedClassifierCV` (sigmoid method,
+   5-fold cross-validation *on the training split*). This produces honest
+   probabilities from a single fit.
+2. **Held-out calibration evaluation** — a dedicated calibration partition
+   (never seen during training or threshold selection) measures how honest the
+   probabilities actually are:
 
-Threshold selection uses a statistically rigorous procedure: for each candidate threshold on a 0.01-step grid, the script computes a one-sided **exact Clopper-Pearson confidence lower bound** on auto-route accuracy, with a **Bonferroni correction** for the number of candidates evaluated. A threshold is eligible only if its simultaneous lower bound is ≥ 90%. Among eligible thresholds, the one with the highest coverage (most tickets auto-routed) is selected.
+   | Metric | Baseline |
+   |---|---|
+   | Expected Calibration Error (ECE) | 0.082 |
+   | Brier score (top label) | 0.104 |
 
-For Logistic Regression, the chosen threshold was **0.54**.
+Do not confuse the CV inside `CalibratedClassifierCV` (part of training) with
+the separate calibration partition (evaluation only). They answer different
+questions.
 
-| Test-set routing metric | Result |
-|---|---:|
-| Overall accuracy | 85.31% |
-| Auto-route coverage | **86.62%** |
-| Accuracy on auto-routed tickets | **90.57%** |
-| Manual-review rate | 13.38% |
-| Auto-routed tickets | 6,216 / 7,176 |
+## Threshold selection
 
-![Routing accuracy versus coverage](reports/figures/baseline_threshold_tradeoff.png)
+The production threshold is selected on the **tune set**, never on test data:
 
-On the held-out test set, auto-routed tickets achieved 90.57% accuracy. This figure is a point estimate on the test set; the statistical accuracy guarantee (simultaneous Clopper-Pearson lower bound ≥ 90%) was established on the tune set and should not be re-interpreted as a guarantee on unseen future data.
+- Candidate grid: 0.10 → 1.00 in 0.01 steps (90 candidates).
+- For each candidate, compute a **simultaneous Clopper–Pearson lower
+  confidence bound** on auto-routed accuracy at α = 0.05, with a **Bonferroni
+  correction** across all candidates.
+- A candidate must route at least 50 tune-set tickets to be eligible.
+- Among eligible candidates, pick maximum **coverage** subject to the lower
+  bound being ≥ 90%.
 
-This converts the classifier into a simple human-in-the-loop routing system: high-confidence tickets are routed automatically, while lower-confidence cases are flagged for manual review.
+Selected threshold: **0.57**
+(`reports/metrics/baseline_selected_threshold.json`). Because selection happens
+on tune data, the statistical guarantee applies there; the numbers below are
+held-out test-set observations, not guarantees.
 
-## Dataset
+## Test-set routing results
 
-The project uses the [IT Service Ticket Classification Dataset](https://www.kaggle.com/datasets/adisongoh/it-service-ticket-classification-dataset).
+| Metric (baseline, threshold 0.57) | Value |
+|---|---|
+| Overall accuracy | 85.75% |
+| Auto-route coverage | 82.56% |
+| Accuracy on auto-routed tickets | 92.16% |
+| Sent to manual review | 17.44% |
+| Auto-routed tickets | 3,952 / 4,787 |
 
-Expected columns:
-
-- `Document` — service ticket text
-- `Topic_group` — target support category
-
-Categories:
-
-- Access
-- Administrative rights
-- Hardware
-- HR Support
-- Internal Project
-- Miscellaneous
-- Purchase
-- Storage
-
-The raw CSV is intentionally excluded from Git. Download it and place it at:
-
-```text
-data/raw/all_tickets_processed_improved_v3.csv
-```
-
-The pipeline uses a **70/10/10/10 stratified split** (train/tune/calibration/test). The tune set is used for threshold selection. The calibration set is a separate held-out partition used solely to measure post-hoc calibration quality (ECE and Brier score) after the model is fitted — it is not used during training. `CalibratedClassifierCV` applies internal 5-fold cross-validation on the training set itself, independent of this split.
-
-The category distribution is imbalanced, which is why model comparison includes **Macro F1** in addition to overall accuracy.
-
-![Ticket category distribution](reports/figures/class_distribution.png)
-
-## How it works
+## Architecture
 
 ```mermaid
-flowchart LR
-    A[Ticket text] --> B[TF-IDF<br/>unigrams + bigrams]
-    B --> C[Logistic Regression]
-    C --> D[Class scores]
-    D --> E{Confidence >= 0.54?}
-    E -->|Yes| F[Auto-route]
-    E -->|No| G[Human review]
+flowchart TD
+    A[Kaggle dataset<br/>47,837 tickets] --> B[DVC pipeline<br/>dvc.yaml]
+    B --> C[prepare_data<br/>SHA-256 IDs, 70/10/10/10 split]
+    C --> D[train_baseline<br/>TF-IDF + LR + calibration]
+    C --> E[train_cnn<br/>TextCNN]
+    D --> F[Evaluation +<br/>calibration metrics]
+    E --> F
+    D --> G[Threshold analysis<br/>Clopper-Pearson + Bonferroni]
+    E --> G
+    F --> H[select_model<br/>coverage-maximizing choice]
+    G --> H
+    H --> I[(Artifacts<br/>baseline.joblib / textcnn.pt)]
+    I --> J[FastAPI app]
+    J --> K[POST /predict]
+    K --> L{"confidence ≥ threshold?"}
+    L -->|yes| M[Auto-route]
+    L -->|no| N[Manual review]
+    J -.-> O[GET /health<br/>GET /metrics<br/>X-API-Key auth]
 ```
 
-The experimental TextCNN uses learned embeddings, parallel 1D convolutions with kernel sizes 3/4/5, global max pooling, dropout, and a linear classifier.
+The API serves a small built-in UI at `/` for interactive classification, and
+`GET /model-info` exposes the persisted evaluation metrics shown in the UI.
 
-## System details
+## MLOps & reproducibility
 
-**Data handling:** The script checks for identical tickets that have conflicting labels and drops them before training. It also saves the exact train/tune/calibration/test IDs alongside a SHA-256 hash of the source dataset. If you modify the CSV later, the pipeline will refuse to load the stale splits, preventing accidental train/test leakage.
+**DVC** versions every stage of the pipeline (`dvc.yaml`, `dvc.lock`):
+data preparation, training, evaluation, threshold analysis, model selection.
+Reproduce any stage with `dvc repro` and inspect results with
+`dvc metrics show`. Artifacts are stored on an S3-compatible remote (DagsHub)
+and fetched with `dvc pull`.
 
-**Model integrity:** It's easy to deploy a new model but forget to update its threshold config. To prevent this, the JSON config stores the SHA-256 hash of the model that generated it. The API raises an exception at startup if the hashes don't match. 
+**MLflow** tracks parameters, metrics, and artifacts for each training run via
+`src/tracking.py`. Tracking is environment-driven: it writes to a local SQLite
+store (`mlruns.db`) by default and is disabled entirely in CI
+(`MLFLOW_TRACKING_ENABLED=false`). Point `MLFLOW_TRACKING_URI` at a real server
+for production use.
 
-**Observability:** The FastAPI app exposes standard Prometheus metrics at `/metrics` so you can monitor latency, request volume, confidence distributions, and how often tickets are being routed vs. flagged for review.
+**Artifact integrity:** every trained model's SHA-256 is recorded, and the
+threshold configuration stores the hash of the exact model that produced it.
+The API validates both at startup and refuses to serve if they disagree — so a
+model can never be served with someone else's threshold. The TextCNN bundle
+(weights, vocab, labels, config) carries its own verified manifest.
 
-**Security:** The `/predict` endpoint checks for an `X-API-Key` header (using constant-time comparison). PyTorch weights are loaded with `weights_only=True` to avoid pickle exploits.
+## Observability
 
-**CI/CD:** The repository uses `ruff` for formatting/linting and `mypy` in strict mode. A GitHub Actions workflow verifies these checks and runs the `pytest` suite on every push.
+The service exposes Prometheus metrics at `/metrics`:
 
-## Repository structure
+- `http_requests_total` / `http_request_duration_seconds` — volume and latency
+  per route template
+- `prediction_requests_total` — classification volume
+- `auto_route_total` / `manual_review_total` — routing behavior over time
+- `prediction_confidence` — live confidence distribution
 
-```text
-.
-├── app/
-│   └── main.py                     # FastAPI application
-├── artifacts/
-│   ├── baseline.joblib             # Local trained baseline model
-│   └── cnn/                        # CNN config, vocabulary, labels, weights
-├── data/
-│   └── raw/                        # Dataset location (CSV ignored by Git)
-├── notebook/                       # Exploratory notebooks
-├── reports/
-│   ├── data/                       # Persisted split manifests
-│   ├── figures/                    # Generated plots
-│   └── metrics/                    # Metrics, thresholds, predictions
-├── src/
-│   ├── data.py                     # Loading, deduplication, stratified splitting
-│   ├── evaluate.py                 # Shared classification & calibration metrics
-│   ├── routing_utils.py            # Threshold selection via exact Clopper-Pearson bounds + Bonferroni correction
-│   ├── train_baseline.py           # TF-IDF + Logistic Regression training
-│   ├── evaluate_tune_baseline.py   # Baseline tune-set predictions + calibration metrics (used for threshold selection)
-│   ├── analyze_threshold_baseline.py
-│   ├── evaluate_calibration_baseline.py  # Baseline calibration quality on held-out calibration partition
-│   ├── evaluate_routing_baseline.py
-│   ├── evaluate_baseline.py        # Baseline test evaluation
-│   ├── cnn_data.py                 # CNN tokenization/vocabulary/dataset
-│   ├── textcnn.py                  # TextCNN architecture
-│   ├── train_cnn.py                # TextCNN training + early stopping
-│   ├── evaluate_cnn.py             # TextCNN test evaluation
-│   ├── evaluate_tune_cnn.py        # TextCNN tune-set predictions + calibration metrics
-│   ├── analyze_threshold_cnn.py    # CNN threshold analysis
-│   ├── evaluate_calibration_cnn.py # CNN calibration quality on held-out calibration partition
-│   ├── compare_models.py           # Model comparison table
-│   ├── select_model.py             # Automated production model selection
-│   ├── error_summary.py            # CNN error analysis
-│   ├── plot_results.py             # README/report figures
-│   └── inference.py                # Baseline/CNN prediction backends
-├── tests/
-│   ├── test_api.py                 # FastAPI contract tests (endpoints, response shape, routing logic)
-│   ├── test_api_hardening.py       # Security/hardening tests (auth modes, Prometheus label safety, input limits)
-│   ├── test_ml_smoke.py            # Baseline predictor smoke test (train, serialize, load, and predict end-to-end)
-│   ├── test_validation_design.py   # Data-split integrity and threshold selection (Clopper-Pearson bounds, disjointness, determinism)
-│   └── test_integration.py         # ML pipeline integration tests
-├── .github/
-│   └── workflows/ci.yml            # GitHub Actions CI
-├── .gitignore
-├── pyproject.toml                  # Ruff / pytest configuration
-├── requirements.txt                # CPU dependencies
-└── requirements-cuda.txt           # GPU/CUDA override
-```
+Unmatched URL paths are collapsed to an `UNMATCHED` label so request
+cardinality cannot grow without bound.
 
-Model binaries (`*.joblib`, `*.pt`) and the raw dataset are ignored by Git. A fresh clone requires placing the dataset in the correct location and using DVC to reproduce the pipeline before starting the API.
+## Security
 
-## Getting started
+- `X-API-Key` authentication on `/predict`; the comparison is constant-time
+  (`secrets.compare_digest`). A key is mandatory when `APP_ENV=production`.
+- PyTorch weights are loaded with `weights_only=True`.
+- Input validation: 3–5,000 characters after whitespace normalization; blank
+  and oversized requests are rejected with 422.
+- Model/threshold SHA-256 binding validated before serving (see above).
+- Covered by dedicated hardening tests (`tests/test_api_hardening.py`).
 
-### 1. Clone the repository
+No credentials are stored in the repository; all secrets are runtime
+environment variables or local-only files (`dvc remote modify --local`,
+`.env`).
+
+## CI
+
+GitHub Actions runs on every push to `main`:
+
+1. **lint-and-test** — install pinned dependencies → `pip check` → `ruff` →
+   `mypy --strict` → `pytest`
+2. **artifact-integration** — `dvc pull` from the DagsHub remote → verify
+   artifact hashes against threshold configs → run integration tests
+3. **docker-build-and-test** — build baseline and CNN images, start them with
+   real credentials, wait for `/health`, then exercise `/predict` end-to-end
+
+This is CI only — deployment happens separately (Render rebuilds from the
+repository image).
+
+## Docker
+
+Two image variants; both pull model artifacts at container startup from the
+DVC remote, so credentials are runtime environment variables — never baked
+into the image:
 
 ```bash
-git clone <YOUR_REPOSITORY_URL>
+# baseline (production default)
+docker build -t it-ticket-classifier:baseline --build-arg MODEL_BACKEND=baseline .
+
+# TextCNN backend
+docker build -t it-ticket-classifier:cnn --build-arg MODEL_BACKEND=cnn .
+```
+
+Run:
+
+```bash
+docker run --rm -p 8000:8000 \
+  -e APP_ENV=production \
+  -e API_KEY=<your-key> \
+  -e DAGSHUB_TOKEN=<token> \
+  it-ticket-classifier:baseline
+```
+
+- Exposes port **8000** (`/health` for readiness).
+- `DAGSHUB_TOKEN` (or `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`) is required
+  for the startup `dvc pull`; the container exits with a clear error if the
+  pull fails. Details: [docs/deploy.md](docs/deploy.md).
+
+## Quickstart
+
+```bash
+# 1. Clone
+git clone https://github.com/phongisnoob/it-service-ticket-classification.git
 cd it-service-ticket-classification
-```
 
-### 2. Create a virtual environment
-
-Windows PowerShell:
-
-```powershell
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
-
-macOS/Linux:
-
-```bash
+# 2-3. Environment + dependencies (Python 3.12)
 python -m venv .venv
-source .venv/bin/activate
-```
+.venv\Scripts\activate            # Windows   (source .venv/bin/activate on macOS/Linux)
+pip install --require-hashes -r requirements-dev.txt
 
-### 3. Install dependencies
+# 4. Dataset — download from Kaggle and place it here:
+#    https://www.kaggle.com/datasets/adisongoh/it-service-ticket-classification-dataset
+#    expected path: data/raw/all_tickets_processed_improved_v3.csv
 
-The codebase requires NumPy, pandas, scikit-learn, joblib, Matplotlib, PyTorch, FastAPI, Uvicorn, and pytest.
+# 5. Reproduce the pipeline (needs DagsHub credentials for artifact pulls)
+dvc remote modify dagshub --local access_key_id "$DAGSHUB_TOKEN"
+dvc remote modify dagshub --local secret_access_key "$DAGSHUB_TOKEN"
+dvc pull                          # fetch pre-trained artifacts, or:
+dvc repro                         # re-run training/evaluation from scratch
 
-| File | Purpose |
-|---|---|
-| `requirements-dev.txt` | Development + testing: all runtime deps plus pytest, ruff, mypy, and Prometheus client |
-| `requirements-cuda.txt` | GPU/CUDA PyTorch override — replaces the CPU torch wheel for training or CNN serving on a GPU host |
-| `requirements-train.txt` | Training-time extras: CNN runtime deps (filelock, fsspec, etc.) plus Matplotlib for evaluation plots |
-| `requirements-cnn.txt` | CNN inference runtime: PyTorch dependency shims (filelock, fsspec, networkx, sympy, jinja2) |
-| `requirements-mlops.txt` | MLOps tooling: DVC (with S3 remote support), MLflow, PyYAML, and SciPy |
-
-```bash
-pip install -r requirements-dev.txt
-```
-
-For GPU/CUDA environments (only needed for training or CNN serving), install with the CUDA override instead:
-
-```bash
-pip install -r requirements-cuda.txt
-```
-
-### 4. Add the dataset
-
-Download the Kaggle dataset and place the CSV at:
-
-```text
-data/raw/all_tickets_processed_improved_v3.csv
-```
-
-### 5. Reproduce the pipeline (DVC)
-
-This repository uses DVC for reproducibility. Once the raw dataset is in place, you can run the entire evaluation pipeline (including training and evaluation for both models) with a single command:
-
-```bash
-dvc repro
-```
-
-DVC will automatically skip any stages that are already up to date. To view the generated metrics:
-
-```bash
-dvc metrics show
-```
-
-### 6. Experiment Tracking (MLflow)
-
-All training hyperparameters, metrics, and models are automatically tracked using MLflow. The tracking database is stored locally in `mlruns.db` (ignored by Git).
-
-To view the experiments, run:
-
-```bash
-mlflow ui
-```
-
-Then open `http://127.0.0.1:5000` in your browser.
-
-To disable tracking, set the environment variable:
-`MLFLOW_TRACKING_ENABLED=false`
-
-## Run the API
-
-The API uses the Logistic Regression backend by default.
-
-```bash
+# 6. Run the API
+set APP_ENV=development           # export APP_ENV=development on macOS/Linux
 python -m uvicorn app.main:app --reload
+
+# 7-8. Verify
+curl http://127.0.0.1:8000/health
 ```
 
-Open the interactive API documentation at:
+```bash
+# 9. Tests
+python -m pytest -v
 
-```text
-http://127.0.0.1:8000/docs
+# 10. Optional: MLflow UI over the local tracking database
+mlflow ui --backend-store-uri sqlite:///mlruns.db
 ```
 
-Health check:
+## API example
 
-```text
-GET /health
+```bash
+curl -X POST https://it-service-ticket-classification.onrender.com/predict \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -d '{"text": "I cannot access my account and need my password reset"}'
 ```
 
-Prediction endpoint:
-
-```text
-POST /predict
-```
-
-Example request:
-
-```json
-{
-  "text": "I cannot access my account and need my password reset"
-}
-```
-
-Example response shape:
+Response shape:
 
 ```json
 {
   "category": "Access",
-  "confidence": 0.99,
-  "threshold": 0.54,
+  "confidence": 0.93,
+  "threshold": 0.57,
   "needs_manual_review": false,
   "top_3": [
-    {"category": "Access", "probability": 0.99},
-    {"category": "Hardware", "probability": 0.01},
-    {"category": "Storage", "probability": 0.0}
+    {"category": "Access", "probability": 0.93},
+    {"category": "Administrative rights", "probability": 0.04},
+    {"category": "Hardware", "probability": 0.02}
   ]
 }
 ```
 
-The API validates ticket length, returns the three highest-scoring categories, and flags predictions whose confidence is below the selected threshold.
+Values above are illustrative; `confidence`, `threshold`, and `top_3`
+probabilities come straight from the calibrated model at request time.
 
-# Deploying (Render / any container platform)
+## Project structure
 
-Model binaries (`baseline.joblib`, `textcnn.pt`) are **not stored in git** — they
-are DVC-tracked and live on the DagsHub S3-compatible remote. The Docker image
-therefore pulls them **at container startup** via `docker/entrypoint.sh`, using
-runtime credentials. Full instructions: [docs/deploy.md](docs/deploy.md).
-
-## Run with Docker
-
-A Dockerfile is provided to run the FastAPI application in an isolated container. It uses `python:3.12.14-slim` and installs only the runtime dependencies (excluding PyTorch for the baseline, and excluding DVC/MLflow entirely).
-
-1. Build the baseline image:
-
-```bash
-docker build --pull -t it-ticket-baseline:test --build-arg MODEL_BACKEND=baseline .
+```text
+app/                 FastAPI application + built-in UI (static/)
+src/                 pipeline code: data, training, evaluation,
+                     routing_utils.py (Clopper-Pearson thresholds),
+                     inference.py (Baseline/CNN backends)
+tests/               66 tests: API contract, security, ML smoke,
+                     split integrity, validation design, integration
+artifacts/           trained models (DVC-tracked, gitignored binaries)
+reports/             metrics, figures, persisted split IDs
+docs/deploy.md       deployment guide (Render env vars)
+dvc.yaml / dvc.lock  reproducible pipeline definition
+params.yaml          model + routing hyperparameters
+Dockerfile           baseline/CNN images with startup artifact pull
 ```
 
-2. Run the baseline container:
+## Engineering highlights
 
-```bash
-docker run --rm -p 8000:8000 -e MODEL_BACKEND=baseline -e APP_ENV=production -e API_KEY=test_key it-ticket-baseline:test
-```
-
-*(Note: The model binaries are pulled at container startup by `docker/entrypoint.sh` using DVC — see [docs/deploy.md](docs/deploy.md) for the required environment variables such as `DAGSHUB_TOKEN`.)*
-
-To build and use the TextCNN backend instead, ensure the CNN artifact exists, then rebuild and run with:
-```bash
-docker build --pull -t it-ticket-cnn:test --build-arg MODEL_BACKEND=cnn .
-docker run --rm -p 8000:8000 -e MODEL_BACKEND=cnn -e APP_ENV=production -e API_KEY=test_key it-ticket-cnn:test
-```
-
-PowerShell example:
-```powershell
-docker run --rm -p 8000:8000 -e MODEL_BACKEND="baseline" -e APP_ENV=production -e API_KEY=test_key it-ticket-baseline:test
-```
-
-## Optional: running scripts directly
-
-You can also run specific scripts directly without DVC, which can be useful during development. Note that DVC is the recommended way to reproduce experiments.
-
-Train the neural model:
-
-```bash
-python -m src.train_cnn
-```
-
-The CNN can be served locally by setting `MODEL_BACKEND=cnn` before starting Uvicorn.
-
-PowerShell:
-
-```powershell
-$env:MODEL_BACKEND="cnn"
-python -m uvicorn app.main:app --reload
-```
-
-macOS/Linux:
-
-```bash
-MODEL_BACKEND=cnn python -m uvicorn app.main:app --reload
-```
-
-## Generate reports
-
-Create the error summary after CNN evaluation:
-
-```bash
-python -m src.error_summary
-```
-
-Regenerate plots after the required metrics files exist:
-
-```bash
-python -m src.plot_results
-```
-
-Generated outputs are kept under [`reports/metrics/`](reports/metrics/) and [`reports/figures/`](reports/figures/).
-
-## Tests
-
-Run the full test suite from the repository root:
-
-```bash
-python -m pytest -v tests/test_api.py tests/test_api_hardening.py tests/test_ml_smoke.py tests/test_validation_design.py tests/test_integration.py tests/test_data_split.py
-```
-
-The tests are grouped by concern:
-
-**API contract** (`test_api.py`)
-- Root, health, and predict endpoint responses
-- `needs_manual_review` routing flag matches confidence vs threshold
-- Top-3 categories returned in descending probability order
-- Empty-text rejection (HTTP 422)
-
-**Security / hardening** (`test_api_hardening.py`)
-- Auth modes: open (no key required) and keyed (401 on missing/wrong key)
-- Prometheus label safety: arbitrary URLs use `UNMATCHED` sentinel, preventing unbounded cardinality
-- Oversized and blank inputs rejected (HTTP 422)
-- `/metrics` endpoint reachable
-
-**ML smoke test** (`test_ml_smoke.py`)
-- Trains a real TF-IDF + Logistic Regression pipeline on synthetic data, serializes it, loads it through `BaselinePredictor`, and asserts correct output structure, confidence bounds, and artifact SHA-256 handling
-
-**Data-split integrity** (`test_data_split.py`)
-- SHA-256 row IDs, split disjointness, blank-row rejection, manifest consistency
-
-**Validation / data-split integrity** (`test_validation_design.py`)
-- Clopper-Pearson and simultaneous lower-bound calculations
-- Threshold selection determinism and coverage-maximizing choice
-- Train/tune/test split disjointness
-- Blank-row rejection and SHA-256 row-ID uniqueness
-- Per-class Wilson lower-bound non-negativity
-
-**Integration** (`test_integration.py`)
-- End-to-end ML pipeline checks requiring DVC-pulled artifacts
-
-## Design decisions
-
-**Why Logistic Regression?**  
-I built the TextCNN expecting it to capture semantics better, but TF-IDF + Logistic Regression actually outperformed it slightly across the board (Accuracy, F1, and routing coverage). It's also much faster to serve and requires fewer dependencies, so it's the practical choice for production here.
-
-**Why evaluate with Macro F1?**  
-The dataset is highly imbalanced. Using Macro F1 prevents the model from looking artificially good just by guessing the majority classes correctly.
+- **Statistical risk control for automation** — routing threshold chosen via
+  simultaneous exact Clopper–Pearson bounds with Bonferroni correction, not a
+  guessed cutoff.
+- **Calibrated probabilities** — `CalibratedClassifierCV` at train time,
+  ECE/Brier measured on a separate calibration partition.
+- **Human-in-the-loop by design** — the model abstains on low-confidence
+  tickets instead of guessing; the UI makes this visible per prediction.
+- **Reproducibility** — full DVC pipeline, lock file, remote artifacts;
+  MLflow tracking behind an env-driven switch.
+- **Artifact integrity** — SHA-256 binding between models and their thresholds,
+  validated at startup and in CI.
+- **Production hygiene** — strict mypy, ruff, hash-pinned dependencies,
+  Prometheus metrics, keyed auth with constant-time comparison, Docker
+  variants smoke-tested in CI.
 
 ## Limitations
 
-- Although the production baseline is sigmoid-calibrated, calibration quality may change under distribution shift and should be monitored using production outcomes or human-review feedback.
-- Several ticket categories have overlapping language, which creates unavoidable ambiguity for a text-only classifier.
-- The current CNN tokenizer is whitespace-based and intentionally simple.
-- Evaluation is based on one public dataset; production data may have different vocabulary and class distributions.
-
-## Getting help
-
-- Use the FastAPI Swagger UI at `/docs` for request/response examples.
-- Check [`reports/metrics/`](reports/metrics/) for saved evaluation results and [`reports/figures/`](reports/figures/) for visualizations.
-- For defects or feature requests, open an issue in the GitHub repository and include the command you ran, the backend (`baseline` or `cnn`), and the relevant error/output.
+- The dataset is public and IT-service specific; vocabulary and class balance
+  may not transfer to other helpdesks.
+- Test-set metrics are retrospective observations. Under distribution drift,
+  calibration quality and the tune-selected threshold can degrade — monitor
+  both against live outcomes.
+- Manual review remains genuinely necessary for ambiguous tickets; coverage
+  cannot reach 100% without giving up the accuracy guarantee.
+- MLflow tracking defaults to a local SQLite database, which is convenient for
+  development but not a production tracking server.
 
 ## Contributing
 
-This is a solo project, so there's no contribution workflow to speak of. If you fork or reuse it, keep the raw dataset and model binaries out of git and run `python -m pytest -v` before sharing changes.
+This is a solo project, so there's no contribution workflow to speak of. If you
+fork or reuse it, keep the raw dataset and model binaries out of git and run
+`python -m pytest -v` before sharing changes.
 
 ## Maintainer
 
-Built and maintained by me ([@phongisnoob](https://github.com/phongisnoob)) as a personal project.
+Built and maintained by me ([@phongisnoob](https://github.com/phongisnoob)) as
+a personal project.
 
+## License
+
+[MIT](LICENSE) © 2026 Doan Tuan Phong
