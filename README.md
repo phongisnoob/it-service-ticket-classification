@@ -435,15 +435,9 @@ The dataset is highly imbalanced. Using Macro F1 prevents the model from looking
 
 ## Contributing
 
-Contributions are welcome. Keep changes focused, avoid committing the raw dataset or generated model binaries, and run the test suite before opening a pull request:
-
-```bash
-python -m pytest -v
-```
-
-For larger changes, open an issue first so the proposed behavior can be discussed before implementation.
+This is a solo project, so there's no contribution workflow to speak of. If you fork or reuse it, keep the raw dataset and model binaries out of git and run `python -m pytest -v` before sharing changes.
 
 ## Maintainer
 
-Maintained by the repository owner. If the project is published under an organization or transferred to another maintainer, update this section with the appropriate contact or team information.
+Built and maintained by me ([@phongisnoob](https://github.com/phongisnoob)) as a personal project.
 
